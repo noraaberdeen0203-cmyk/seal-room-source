@@ -1,0 +1,220 @@
+{
+  "document_type": "seal_room_p3b24_fix1_restart_semantics_spec",
+  "project_name": "隔绝室",
+  "target_version": "0.1.2-P3-B2.4-fix1-restart-semantics",
+  "purpose": "统一状态/时间型重启目标语义、自身复苏排除、外部重启6800硬门，并把旧即时复苏路径统一迁移到applyRevivalDelta；暂不处理记忆/因果型重启与完整时间回溯。",
+  "frozen_rules": {
+    "rare_tag_thresholds": {
+      "1500": [
+        "必死",
+        "压制",
+        "诅咒"
+      ],
+      "2200": [
+        "鬼域",
+        "意识"
+      ],
+      "3000": [
+        "唯心",
+        "重启"
+      ]
+    },
+    "high_order_domain": "高位鬼域=当前有效鬼域强度>=6800；无额外tag/第二阈值。",
+    "area_restart_threshold": 6800,
+    "area_restart_requires": [
+      "鬼域",
+      "重启"
+    ],
+    "natural_revival": "仍仅long_time_skip",
+    "d100": "不能越过scope/mechanism/strength硬门"
+  },
+  "restart_model": {
+    "supported_type": "状态/时间型重启",
+    "supported_domains": [
+      "body",
+      "position",
+      "injury",
+      "supernatural_state",
+      "revival_state"
+    ],
+    "unsupported_this_round": [
+      "memory",
+      "consciousness",
+      "causal_history"
+    ],
+    "default_scope": {
+      "self": "普通单体重启，仅自身，不强制鬼域/6800",
+      "external": "若target!=self且无Power显式特殊说明，即使只选1个外部目标也一律进入AreaRestartGate",
+      "external_single_exception": "仅具体Power显式声明时存在，默认false"
+    }
+  },
+  "restart_targeting_gate": {
+    "logic": [
+      "target_is_self => self_restart",
+      "target_is_external && explicit_external_single_exception => exceptional_external_single",
+      "target_is_external && !explicit_external_single_exception => area_restart"
+    ],
+    "hard_rule": "外部单目标不能以single_target名义绕过鬼域+重启+effective>=6800。"
+  },
+  "source_self_exclusion": {
+    "default": "重启源不能用自己的状态/时间型重启刷新其自身作为重启源承担的revival_state。",
+    "self_restart": "对source owner自动剔除revival_state，但可继续回退body/position/injury/允许的supernatural_state。",
+    "area_restart": "即使范围覆盖发动者自身，也默认剔除source owner的revival_state。",
+    "external_restart": "独立source B对target A重启时，只要restart_domains含revival_state且机制/强度通过，可回退A的revival_state。",
+    "override": "仅Power显式can_rewind_own_source_revival=true时例外；默认不存在。"
+  },
+  "reciprocal_restart": {
+    "allowed": true,
+    "definition": "两个独立范围重启源若都能作用于对方revival_state并各自通过6800与机制门，可轮流刷新对方。",
+    "not_automatic": true,
+    "break_examples": [
+      "effective<6800",
+      "鬼域被压制",
+      "作用域失去覆盖",
+      "外来重启抗性",
+      "唯心脱层",
+      "更高位机制介入"
+    ]
+  },
+  "unified_immediate_revival": {
+    "function": "applyRevivalDelta",
+    "rule": "除long_time_skip自然复苏专用settlement外，所有即时revival变化必须经applyRevivalDelta。",
+    "migrate": [
+      "drive",
+      "force_drive",
+      "containment即时cost",
+      "rare actions",
+      "borrowed supernatural",
+      "suppression/curse/restart即时cost",
+      "其他现有即时revival写入"
+    ],
+    "forbidden": "即时路径直接character.revival_degree += x",
+    "threshold": "previous<100且new==100 => revival_threshold interrupt；本轮只hook/pending endpoint，不实现完整RevivalEndpointEngine。"
+  },
+  "transaction_persistence": {
+    "problem": "进程内cost去重Set无法跨save/load。",
+    "required": "持久化最近未完成/已完成事务的committed_cost_ids。",
+    "suggested_fields": [
+      "transaction_id",
+      "status",
+      "committed_cost_ids",
+      "interrupt"
+    ],
+    "bounded_history": "保留最近64或128条即可。",
+    "hard_rule": "save/load后同transaction_id+cost_id不得重复扣revival/资源。"
+  },
+  "required_tests": [
+    {
+      "id": "RF01",
+      "setup": "self restart，无鬼域",
+      "expected": "允许self路径"
+    },
+    {
+      "id": "RF02",
+      "setup": "外部1目标，无exception，无鬼域",
+      "expected": "路由AreaRestartGate并失败"
+    },
+    {
+      "id": "RF03",
+      "setup": "外部1目标，鬼域+重启，effective=6799",
+      "expected": "失败"
+    },
+    {
+      "id": "RF04",
+      "setup": "外部1目标，鬼域+重启，effective=6800",
+      "expected": "硬门通过"
+    },
+    {
+      "id": "RF05",
+      "setup": "Power显式external_single_target_exception=true",
+      "expected": "走特殊外部单体路径，不强制普通AreaRestartGate"
+    },
+    {
+      "id": "RF06",
+      "setup": "self restart请求revival_state",
+      "expected": "source自身revival_state被剔除"
+    },
+    {
+      "id": "RF07",
+      "setup": "area restart覆盖发动者自身并含revival_state",
+      "expected": "其他允许状态可回退；source自身revival_state不刷新"
+    },
+    {
+      "id": "RF08",
+      "setup": "独立B范围重启A，domains含revival_state",
+      "expected": "允许A.revival_state成为回退目标"
+    },
+    {
+      "id": "RF09",
+      "setup": "A/B两个独立范围重启源轮流互刷且均>=6800",
+      "expected": "逐次规则允许，不被全局禁止"
+    },
+    {
+      "id": "RF10",
+      "setup": "标准RestartEngine请求memory/consciousness/causal_history",
+      "expected": "unsupported/special mechanism required"
+    },
+    {
+      "id": "RF11",
+      "setup": "force_drive即时cost令95->100",
+      "expected": "经applyRevivalDelta并revival_threshold"
+    },
+    {
+      "id": "RF12",
+      "setup": "审查旧即时路径",
+      "expected": "不存在直接+= revival写入"
+    },
+    {
+      "id": "RF13",
+      "setup": "tx1/c1已commit保存，reload后重放",
+      "expected": "不重复扣费"
+    },
+    {
+      "id": "RF14",
+      "setup": "long_time_skip自然复苏到100",
+      "expected": "原有截断/interrupt保持"
+    }
+  ],
+  "regression": [
+    "RA01-RA18",
+    "RR01-RR15",
+    "RT01-RT18",
+    "DH01-DH12",
+    "P2 current-strength driving",
+    "containment",
+    "contained ghost freeze",
+    "Source Contact",
+    "SuppressionLock",
+    "CurseLink",
+    "hidden isolation"
+  ],
+  "do_not_do": [
+    "记忆/因果型重启",
+    "完整世界快照回退",
+    "完整RevivalEndpointEngine",
+    "UI大改",
+    "在线LLM Plan Interpreter",
+    "Scheduler",
+    "Hidden Roll",
+    "Event Clock",
+    "NPC Autonomy",
+    "修改1500/2200/3000/6800",
+    "新增第二高位鬼域门槛"
+  ],
+  "audit": {
+    "output_file": "seal_room_p3b24_fix1_restart_semantics_audit.json",
+    "mode": "read_only",
+    "must_verify": [
+      "外部单目标默认走AreaRestartGate",
+      "self restart无需鬼域/6800",
+      "external single exception只来自Power显式规则",
+      "source自身revival_state不能被自身重启刷新",
+      "外部独立重启可刷新目标revival_state",
+      "两个范围重启支持逐次互刷",
+      "memory/consciousness/causal restart保持unsupported",
+      "旧即时revival统一applyRevivalDelta",
+      "transaction cost save/load安全",
+      "冻结层无回归"
+    ]
+  }
+}

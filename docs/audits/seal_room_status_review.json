@@ -1,0 +1,372 @@
+{
+  "document_type": "implementation_status_and_review",
+  "project_name": "隔绝室",
+  "project_name_en": "Seal Room",
+  "version": "0.1.0-prototype",
+  "language": "zh-CN",
+  "generated_at": "2026-09-06T08:29:00+08:00",
+  "source_of_truth": {
+    "architecture_spec": "supernatural_trpg_simulator_architecture_task.json",
+    "literary_reference": "《神秘复苏》公开设定共识（铁律/黄金/危害等级/驭鬼代价），不绑定原著人物卡与剧情结局",
+    "implementation_note": "本文件描述已落地的 Web 原型与自我审阅，不是新的世界观设定包"
+  },
+  "completed_content": {
+    "product_surface": {
+      "app_title": "隔绝室",
+      "tagline": "RULE FIRST / D100",
+      "persistence": "localStorage（无账号、无云库）",
+      "ai_gm": "xAI grok-4.5 服务器函数 + 18–20s 超时回落本地 GM",
+      "demo_pack": {
+        "pack_id": "seal-room-demo-01",
+        "pack_name": "雨巷公寓 · 示范档案",
+        "original_cast": true,
+        "characters": [
+          "沈衡（玩家/见习处理员）",
+          "林澄（联络员）",
+          "周晚（管理员，已被声音标记）",
+          "涂黑的前任（隐藏）",
+          "应门的那一声（低强度高危害源头）",
+          "棺中物（高强度低危害源头）"
+        ],
+        "events": [
+          {
+            "id": "evt_knock",
+            "name": "雨巷公寓敲门事件",
+            "pattern": "低源头强度 + 高危害（媒介宽、可扩散、易关错对象）"
+          },
+          {
+            "id": "evt_coffin",
+            "name": "仓库金棺",
+            "pattern": "高源头强度 + 低危害（固定、条件苛刻、保持隔绝）"
+          }
+        ]
+      }
+    },
+    "frontend_pages_shipped": [
+      { "id": "start", "status": "done", "features": ["新游戏", "读取本地存档", "导入内容包 JSON", "导入存档 JSON"] },
+      { "id": "play", "status": "done", "features": ["剧情日志", "行动类型", "自由输入", "建议行动", "明骰条", "状态侧栏", "地点切换"] },
+      { "id": "character_sheet", "status": "done", "features": ["核心数值", "复苏/身体/锚点/掌控", "已知灵异", "持有物", "阶位"] },
+      { "id": "npc_list", "status": "done", "features": ["可见 NPC", "GM 模式下显示隐藏人物与隐藏背景"] },
+      { "id": "clue_board", "status": "done", "features": ["已确认规律", "疑似规律", "误判", "线索日志"] },
+      { "id": "event_monitor", "status": "done", "features": ["危害等级", "源头强度", "危害强度", "失控度", "封锁/关押状态"] },
+      { "id": "dice_log", "status": "done", "features": ["明骰表", "GM 可看暗骰"] },
+      { "id": "gm_panel", "status": "done", "features": ["开关 GM 权限", "隐藏真相", "NPC 动机", "事件时钟", "主持备注"] },
+      { "id": "archive", "status": "done", "features": ["灵异库", "物品库", "隐藏效果仅 GM 可见"] },
+      { "id": "content_pack", "status": "partial", "features": ["导出内容包/存档", "粘贴 JSON 校验"], "missing": ["可视化新增 NPC/厉鬼/事件的完整编辑器"] }
+    ],
+    "engine_modules_shipped": [
+      { "id": "DiceEngine", "status": "done", "notes": "1D100，margin 六档 + 1/100 极端结果，明/暗骰字段" },
+      { "id": "RuleEngine", "status": "done", "notes": "关键词媒介触发 + 机制标签匹配；不匹配则封顶成功率" },
+      { "id": "SupernaturalEngine", "status": "partial", "notes": "阶位表可配置，有效压制力可算；鬼域层数/拼图组装未独立结算" },
+      { "id": "HazardEngine", "status": "done", "notes": "危害强度由因素+失控+暴露重算，与源头强度分离" },
+      { "id": "CharacterEngine", "status": "done", "notes": "可见/隐藏字段分离；玩家界面默认不渲染 hidden" },
+      { "id": "EventClockEngine", "status": "done", "notes": "按行动原因加减失控度；错误关押/录像/封锁失败会推高" },
+      { "id": "KnowledgeEngine", "status": "done", "notes": "reveal_conditions + 疑似规律裁剪；hidden_truth 默认不进玩家层" },
+      { "id": "InventoryEngine", "status": "partial", "notes": "物品展示与关押用金容器检查已有；消耗数量未量化扣减" },
+      { "id": "ContainmentEngine", "status": "done", "notes": "源头确认/在现实/窗口/黄金/更大危害 五项硬检查" },
+      { "id": "DrivingEngine", "status": "partial", "notes": "相容性/承载/复苏/压制物预检；未做成死机对冲状态机" },
+      { "id": "GMNarrationEngine", "status": "done", "notes": "规则引擎先结算，再把可见上下文交给 AI；禁止剧透写入 system" },
+      { "id": "SaveLoadEngine", "status": "done", "notes": "localStorage + JSON 导入导出" },
+      { "id": "ContentPackLoader", "status": "done", "notes": "必填字段校验；缺 player_character 拒收" },
+      { "id": "StackingEngine", "status": "done", "notes": "递减加压 + 重复判定次数 + 代价分摊，禁止线性乘法" }
+    ],
+    "schemas_implemented": [
+      "character",
+      "power",
+      "item",
+      "event",
+      "location",
+      "organization",
+      "reveal_condition",
+      "strength_tier",
+      "save_data",
+      "content_pack"
+    ],
+    "acceptance_against_original_task": {
+      "can_import_json_pack": true,
+      "can_create_or_load_player": true,
+      "can_run_supernatural_event": true,
+      "can_roll_d100": true,
+      "can_mutate_revival_body_anchor_clock": true,
+      "visible_vs_hidden_separated": true,
+      "can_export_save": true,
+      "ai_forbidden_from_spoiling_hidden": true,
+      "strength_and_hazard_shown_separately": true,
+      "action_types_have_distinct_logic": true
+    }
+  },
+  "actual_architecture": {
+    "pattern_name": "Rule-First Resolution Pipeline + Layered Context + Thin AI Narrator",
+    "auth_and_data": {
+      "auth": "off",
+      "database": "off",
+      "store": "zustand + localStorage"
+    },
+    "runtime_topology": {
+      "client": [
+        "TanStack Start / React 视图层",
+        "zustand 存档与回合状态",
+        "本地规则引擎（纯函数，先于 AI）"
+      ],
+      "server": [
+        "askGm createServerFn：只接收可见上下文 + 已完成的 ResolutionResult",
+        "XAI_API_KEY 仅服务端读取"
+      ],
+      "fallback": "AI 超时或失败时 localNarrate 用同一份判定结果写冷峻文本"
+    },
+    "data_layers": {
+      "player_visible_context": "地点、已知 NPC、自身状态、已知物品、已揭示线索、已确认/疑似规律",
+      "gm_hidden_context": "完整规律、源头身份、现实状态、NPC 隐藏动机、未满足的揭示条件",
+      "system_rules": "厉鬼不可杀死、黄金隔绝、规律优先、骰子不能否定已成立规律",
+      "content_packs": "独立 JSON，服从同一 schema"
+    },
+    "action_resolution_pipeline": [
+      { "step": 1, "name": "解析玩家行动", "impl": "inferActionType + 显式行动类型按钮" },
+      { "step": 2, "name": "检查厉鬼规律", "impl": "detectRuleTrigger（应门/看见/触碰/录像/喊名等媒介）" },
+      { "step": 3, "name": "机制是否匹配", "impl": "matchMechanism；不匹配时目标值封顶且不能直接成功" },
+      { "step": 4, "name": "计算目标值", "impl": "按行动类型 + 属性 + 阶位差 + 失控度 + 复苏干扰" },
+      { "step": 5, "name": "投骰并分级", "impl": "resolveDice / classifyMargin" },
+      { "step": 6, "name": "灵异对抗与叠加", "impl": "computeStackedPressure + costShareFactor，非乘法" },
+      { "step": 7, "name": "结算代价", "impl": "复苏/身体/锚点/失控度；用灵异必有代价" },
+      { "step": 8, "name": "更新信息层", "impl": "tryReveal + rebuildVisible" },
+      { "step": 9, "name": "AI 叙事", "impl": "只叙述可见层；硬规则结果不得被剧情推翻" }
+    ],
+    "invariants": [
+      "规则引擎输出先于叙事，AI 不得改写判定",
+      "已成立的必死/媒介规律不能被高点数取消",
+      "源头灵异强度不得直接写成危害等级",
+      "驾驭厉鬼数量不得线性加总为强度",
+      "隐藏字段默认不出现在玩家界面",
+      "关押失败允许事件转移或升级，而不是 Game Over 一笔勾掉"
+    ],
+    "strength_and_hazard_model": {
+      "supernatural_strength": "个体/源头的规则质量与压制上限（0–10000，可配置阶位）",
+      "hazard_grade": "C|B|A|S，管理评级，看扩散与社会失控",
+      "demo_proof": [
+        "evt_knock: source_strength=260, 初始危害偏 B 且可因录像/关错对象上升",
+        "evt_coffin: source_strength=2100, 维持隔绝时可停在 C"
+      ]
+    },
+    "file_layout_intended": {
+      "engine": [
+        "src/lib/engine/types.ts",
+        "src/lib/engine/dice.ts",
+        "src/lib/engine/strength.ts",
+        "src/lib/engine/stacking.ts",
+        "src/lib/engine/hazard.ts",
+        "src/lib/engine/rules.ts",
+        "src/lib/engine/containment.ts",
+        "src/lib/engine/driving.ts",
+        "src/lib/engine/knowledge.ts",
+        "src/lib/engine/resolution.ts",
+        "src/lib/engine/content-pack.ts",
+        "src/lib/engine/narrate-local.ts"
+      ],
+      "ai": ["src/lib/gm/narrate.ts"],
+      "content": ["src/lib/packs/default-pack.ts"],
+      "state": ["src/lib/store.ts"],
+      "ui": [
+        "src/components/Shell.tsx",
+        "src/components/StartScreen.tsx",
+        "src/components/PlayView.tsx",
+        "src/components/Panels.tsx",
+        "src/components/ui.tsx"
+      ]
+    }
+  },
+  "self_review": {
+    "overall_verdict": "可运行的规则向 MVP。核心铁律和信息分层成立，但还不是完整的原著模组，也还不是内容生产工具。",
+    "what_is_correct": [
+      "规律优先、骰子不否定硬规则，在关押/应门/机制不匹配三条路上都能表现出来",
+      "强度与危害在事件面板上分列，示范包用两起事件同时证明两种反向组合",
+      "玩家层与 GM 层拆开，AI system prompt 明确禁止输出隐藏真相",
+      "叠加用递减加压而不是乘法，避免“两只鬼 = 双倍强度”",
+      "行动类型（观察/封锁/逃离/动用/关押/驾驭/交涉）走不同目标值和失败模式",
+      "失败会留线索或隐患，而不是直接结束",
+      "内容包校验能指出缺 pack_id / 缺玩家角色等字段问题"
+    ],
+    "gaps_vs_architecture_doc": [
+      {
+        "id": "content_pack_editor",
+        "severity": "medium",
+        "detail": "P6 要求的可视化编辑器未做，目前只有导入导出和粘贴校验"
+      },
+      {
+        "id": "hidden_rolls_runtime",
+        "severity": "medium",
+        "detail": "数据结构支持暗骰，事件时钟推进时尚未系统自动掷暗骰"
+      },
+      {
+        "id": "item_quantity",
+        "severity": "low",
+        "detail": "黄金薄片“半盒”只在叙事层有限，没有库存计数"
+      },
+      {
+        "id": "dream_turn",
+        "severity": "low",
+        "detail": "架构里的梦境/记忆回合未实现"
+      },
+      {
+        "id": "schema_validation_depth",
+        "severity": "medium",
+        "detail": "校验偏必填字段，深层类型与可见/隐藏一致性检查不完整"
+      }
+    ],
+    "gaps_vs_novel_public_canon": [
+      {
+        "id": "puzzle_assembly",
+        "severity": "high",
+        "detail": "拼图相容与拼完整后的规则升级没有独立模块"
+      },
+      {
+        "id": "deadlock_balance",
+        "severity": "high",
+        "detail": "以鬼制鬼的死机/对冲平衡未做成状态机，驾驭仍偏单次判定"
+      },
+      {
+        "id": "ghost_domain_layers",
+        "severity": "medium",
+        "detail": "只有机制标签，没有 1–N 层各自改写感知/空间/时间的效果表"
+      },
+      {
+        "id": "idle_revival",
+        "severity": "medium",
+        "detail": "原著即使不用能力也会随时间复苏；当前复苏主要跟行动绑定"
+      },
+      {
+        "id": "entity_kinds",
+        "severity": "high",
+        "detail": "源头 / 媒介 / 投影 / 鬼奴 四种对象还没有完全不同的关押与击杀规则（鬼奴可被杀死，源头不能）"
+      },
+      {
+        "id": "force_into_reality",
+        "severity": "medium",
+        "detail": "源头不在现实时的“强制现实化”只有失败模式，没有完整手续"
+      },
+      {
+        "id": "org_layer",
+        "severity": "low",
+        "detail": "总部配额、情报交易、民间组织博弈未进入回合资源"
+      }
+    ],
+    "known_product_issues": [
+      {
+        "id": "ai_latency",
+        "severity": "medium",
+        "detail": "在线 GM 偶发卡住；已加超时回落，但玩家仍会感到一轮偏慢"
+      },
+      {
+        "id": "trigger_by_keyword",
+        "severity": "medium",
+        "detail": "规律触发靠中文关键词，复杂表述或否定句可能误触发/漏触发"
+      },
+      {
+        "id": "contain_claimed_source",
+        "severity": "medium",
+        "detail": "关押时 claimedSourceId 仍可能默认成事件上的 source_entity_id，玩家“关错对象”要靠行动文本和模式分支，交互上还不够硬"
+      },
+      {
+        "id": "log_scroll",
+        "severity": "low",
+        "detail": "长日志依赖自动滚底，移动端侧栏信息密度偏高"
+      }
+    ],
+    "test_scenarios_status": [
+      { "id": "high_strength_low_hazard", "status": "covered_by_demo", "via": "evt_coffin" },
+      { "id": "low_strength_high_hazard", "status": "covered_by_demo", "via": "evt_knock" },
+      { "id": "mechanism_mismatch", "status": "engine_ready", "via": "matchMechanism 封顶 + 不可直接成功" },
+      { "id": "containment_false_source", "status": "engine_ready", "via": "containment.mode=false_source，事件可 escaped" },
+      { "id": "hidden_truth_protection", "status": "engine_ready", "via": "GM 开关 + AI 禁令 + knowledge filter" },
+      { "id": "stacking_non_linear", "status": "engine_ready", "via": "stacking.ts 递减加压", "note": "示范角色默认叠加层数为 1，未在 UI 上单独演示多层" }
+    ],
+    "non_goals_kept": [
+      "不写入原著人物固定数值",
+      "不写入不可修改的结局",
+      "不把危害等级当战斗力",
+      "不把驭鬼数量当强度"
+    ]
+  },
+  "recommended_followups": {
+    "priority_order": [
+      "P1_entity_kinds_and_false_source_ux",
+      "P2_deadlock_and_puzzle",
+      "P3_clock_idle_revival_hidden_rolls",
+      "P4_ghost_domain_layers",
+      "P5_content_authoring",
+      "P6_ai_reliability"
+    ],
+    "items": [
+      {
+        "id": "P1_entity_kinds_and_false_source_ux",
+        "phase": "next",
+        "title": "把源头/媒介/投影/鬼奴做成不同对象",
+        "why": "原著关押最容易错的就是关错东西；现在引擎能判失败，但玩家操作还不够明确",
+        "work": [
+          "关押前强制选择对象类型与对象 id",
+          "鬼奴允许“杀死/打散”，源头禁止",
+          "关押媒介后事件改为转移而不是 resolved"
+        ]
+      },
+      {
+        "id": "P2_deadlock_and_puzzle",
+        "phase": "next",
+        "title": "死机对冲 + 拼图相容",
+        "why": "这是原著“变强”的真正方式，也是架构里 stacking/driving 还没长完的部分",
+        "work": [
+          "驾驭成功进入 dual_ghost_deadlock 状态，而不是加数值",
+          "拼图碎片记录 parent_puzzle_id 与 compatibility",
+          "拼完整只提升规则优先级和容错，不乘强度"
+        ]
+      },
+      {
+        "id": "P3_clock_idle_revival_hidden_rolls",
+        "phase": "next",
+        "title": "自然复苏与暗骰时钟",
+        "why": "原著不用能力也会倒计时；架构要求场外扩散、追杀接近走暗骰",
+        "work": [
+          "每回合即使观察也结算微量复苏",
+          "封锁失败/围观/录像触发隐藏时钟骰",
+          "暗骰只进 GM 日志"
+        ]
+      },
+      {
+        "id": "P4_ghost_domain_layers",
+        "phase": "later",
+        "title": "鬼域按层配置效果",
+        "why": "避免把鬼域写成普通技能名",
+        "work": [
+          "层数配置化，不写死 1–10 的原著具体数值",
+          "高层可压制低层，但不能取消已成立规律"
+        ]
+      },
+      {
+        "id": "P5_content_authoring",
+        "phase": "later",
+        "title": "内容包编辑器与更深校验",
+        "why": "后续扩角色/事件不应手改整份 JSON",
+        "work": [
+          "分栏编辑可见字段与隐藏字段",
+          "校验：隐藏字段不得出现在玩家默认文案",
+          "校验：同一事件必须同时能表达强度与危害两列"
+        ]
+      },
+      {
+        "id": "P6_ai_reliability",
+        "phase": "later",
+        "title": "GM 调用更稳",
+        "why": "规则层已经可玩，叙事层是体验瓶颈",
+        "work": [
+          "默认先出本地结算文本，AI 回来再替换",
+          "收紧输出 JSON schema",
+          "对 hidden 字段做输出后扫描，命中则抹掉重试一次"
+        ]
+      }
+    ],
+    "do_not_do_next": [
+      "不要把杨间等原著人物做成不可改数值卡",
+      "不要把 C/B/A/S 改成战斗力等级",
+      "不要用驭鬼数量或线性乘法抬强度",
+      "不要让骰子系统升级成“万能对抗”"
+    ]
+  }
+}

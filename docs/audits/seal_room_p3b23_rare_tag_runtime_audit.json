@@ -1,0 +1,131 @@
+{
+  "document_type": "seal_room_p3b23_rare_tag_runtime_audit",
+  "project_name": "隔绝室",
+  "project_version": "0.1.2-P3-B2.3-rare-tag-runtime",
+  "audit_generated_at": "2026-09-06T19:50:00+08:00",
+  "audit_mode": "read_only",
+  "overall_verdict": {
+    "status": "pass",
+    "summary": "范围重启唯一强度线仍为 effective>=6800，叠加经 stackingEngineComposite→cooperativeOpposition。临时跨门 cost<20 提升到 MAJOR_REVIVAL_COST_MIN。唯心未 Source Contact 时 containment 在强度门前失败。SuppressionLock 按 scope 封锁可解除。CurseLink 强制 medium，可远离维持、不可默认传播，借用效果不授予驭鬼。111 测全过。无第二高位鬼域阈值。",
+    "score": 0.92
+  },
+  "source_of_truth": {
+    "documents_found": ["attachments/seal_room_p3b23_rare_tag_runtime_spec.json"],
+    "latest_rules_used": true
+  },
+  "repository_inspection": {
+    "new_modules": [
+      "src/lib/engine/source-contact.ts",
+      "src/lib/engine/suppression.ts",
+      "src/lib/engine/curse-link.ts",
+      "src/lib/engine/runtime.test.ts"
+    ],
+    "high_order_domain_second_threshold": false,
+    "tests_failed": [],
+    "totals": "111 passed / 0 failed",
+    "typecheck": "clean"
+  },
+  "corrections_review": {
+    "R01_unified_6800": {
+      "status": "done",
+      "expected_behavior": "无第二阈值；effective>=6800 唯一线。",
+      "actual_behavior": "isHighOrderDomain = domain current>=6800；gate 用 AREA_RESTART_THRESHOLD。",
+      "evidence": [{"file": "src/lib/engine/area-restart.ts", "symbol": "isHighOrderDomain", "detail": "reuses AREA_RESTART_THRESHOLD only"}],
+      "test_evidence": ["RR01", "RR02", "RR03"],
+      "deviation": false,
+      "notes": ""
+    },
+    "R01_stacking": {
+      "status": "done",
+      "expected_behavior": "AreaRestart→StackingEngine→cooperativeOpposition。",
+      "actual_behavior": "stackingEngineComposite 为入口。",
+      "evidence": [{"file": "src/lib/engine/stacking.ts", "symbol": "stackingEngineComposite", "detail": "mismatch returns 0"}],
+      "test_evidence": ["RR05"],
+      "deviation": false,
+      "notes": ""
+    },
+    "R02_major_revival": {
+      "status": "done",
+      "expected_behavior": "跨 6800 不得按 3 结算。",
+      "actual_behavior": "Math.max(MAJOR_REVIVAL_COST_MIN=20, raw)。",
+      "evidence": [{"file": "src/lib/engine/area-restart.ts", "symbol": "MAJOR_REVIVAL_COST_MIN", "detail": "20"}],
+      "test_evidence": ["RR04"],
+      "deviation": false,
+      "notes": ""
+    },
+    "R03_source_contact": {
+      "status": "done",
+      "expected_behavior": "唯心未接触不能进真实源头关押硬门。",
+      "actual_behavior": "evaluateContainmentP2 在 reality/strength 前检查 idealisticBlocksContainment。",
+      "evidence": [{"file": "src/lib/engine/containment.ts", "symbol": "no_source_contact", "detail": "mode before strength compare"}],
+      "test_evidence": ["RR06", "RR07", "RR08"],
+      "deviation": false,
+      "notes": ""
+    },
+    "R04_suppression": {
+      "status": "done",
+      "expected_behavior": "one_power 只封指定 Power，可解除。",
+      "actual_behavior": "powerBlocked + releaseSuppressionLocks。",
+      "evidence": [{"file": "src/lib/engine/suppression.ts", "symbol": "createSuppressionLock", "detail": "scope field"}],
+      "test_evidence": ["RR09", "RR10", "RR15"],
+      "deviation": false,
+      "notes": ""
+    },
+    "R05_curse": {
+      "status": "done",
+      "expected_behavior": "无 medium 失败；远离仍 active；不可默认传播；借用非驾驭。",
+      "actual_behavior": "createCurseLink/spreadCurse/applyBorrowedEffects。",
+      "evidence": [{"file": "src/lib/engine/curse-link.ts", "symbol": "applyBorrowedEffects", "detail": "is_ghost_controller=false"}],
+      "test_evidence": ["RR11", "RR12", "RR13", "RR14"],
+      "deviation": false,
+      "notes": ""
+    }
+  },
+  "behavioral_tests": [
+    {"id": "RR01", "status": "pass"},
+    {"id": "RR02", "status": "pass"},
+    {"id": "RR03", "status": "pass"},
+    {"id": "RR04", "status": "pass"},
+    {"id": "RR05", "status": "pass"},
+    {"id": "RR06", "status": "pass", "pipeline": "evaluateContainmentP2"},
+    {"id": "RR07", "status": "pass", "pipeline": "evaluateContainmentP2"},
+    {"id": "RR08", "status": "pass", "pipeline": "evaluateContainmentP2"},
+    {"id": "RR09", "status": "pass"},
+    {"id": "RR10", "status": "pass"},
+    {"id": "RR11", "status": "pass"},
+    {"id": "RR12", "status": "pass"},
+    {"id": "RR13", "status": "pass"},
+    {"id": "RR14", "status": "pass"},
+    {"id": "RR15", "status": "pass"}
+  ],
+  "regression_tests": {
+    "RT01_RT18": "pass",
+    "DH01_DH12": "pass",
+    "p2_containment": "pass",
+    "current_driving": "pass"
+  },
+  "deviations": [],
+  "implementation_ambiguities": [
+    "临时增幅 revival_cost 在 AreaRestartGate 计算，尚未自动写回 resolveAction 的 player revival（本轮测试验门）。",
+    "诅咒传播与压制未接 PlayView。"
+  ],
+  "technical_debt": [
+    "resolveAction 尚无独立 area_restart/suppress/curse action_type。",
+    "唯心媒介识别仍由调用方传入 establishSourceContact 参数。"
+  ],
+  "architecture_drift": {
+    "detected": false,
+    "items": ["未新增 HIGH_ORDER_DOMAIN_THRESHOLD", "未改 1500/2200/3000/6800", "未加短期复苏加速"]
+  },
+  "freeze_status": {
+    "p2_base": "frozen",
+    "p3_ab": "frozen",
+    "p3_b2": "frozen",
+    "p3_b22_thresholds": "frozen",
+    "p3_b23_runtime": "applied"
+  },
+  "next_required_work": [
+    {"priority": "P3", "title": "resolveAction 接线 area_restart/suppress/curse", "reason": "门函数已独立可测", "blocking": false}
+  ],
+  "final_assessment": "P3-B2.3 runtime 接线完成：6800 单一强度线、major 复苏下限、唯心 Source Contact 前置、压制锁与诅咒链可运行。建议冻结本层，下一步只接主管道 action 与 UI。"
+}

@@ -1,0 +1,155 @@
+{
+  "document_type": "seal_room_p3b2_deadlock_heteromorph_audit",
+  "project_name": "隔绝室",
+  "project_version": "0.1.2-P3-B2-deadlock-heteromorph",
+  "audit_generated_at": "2026-09-06T18:20:00+08:00",
+  "audit_mode": "read_only",
+  "overall_verdict": {
+    "status": "pass",
+    "summary": "BalanceState 与 DeadlockState 已分离；旧 dual_ghost_deadlock/stable_deadlock 不授予真正死机。DeadlockLogicGate 检查双力量/同一核心/真实冲突/闭锁/current。HeteromorphLogicGate 强制已成立死机与具体意识保护，memory tag 不足。方案经 PlanEvaluator 结构化后由规则引擎写回，阶段顺序 BALANCE→DEADLOCK→CONSCIOUSNESS_PRESERVED→HETEROMORPH。invalid_logic+01 不能死机；revival=100 不自动异类。75 测全过。",
+    "p3b2_score": 0.9
+  },
+  "source_of_truth": {
+    "documents_found": ["attachments/seal_room_p3b2_deadlock_heteromorph_spec.json"],
+    "latest_rules_used": true
+  },
+  "repository_inspection": {
+    "new_modules": [
+      "src/lib/engine/plan-evaluator.ts",
+      "src/lib/engine/deadlock-gate.ts",
+      "src/lib/engine/heteromorph-gate.ts",
+      "src/lib/engine/transition.ts",
+      "src/lib/engine/p3b2.test.ts"
+    ],
+    "tests_executed": [
+      {"file": "src/lib/engine/p3b2.test.ts", "result": "DH01-DH12 pass"},
+      {"file": "src/lib/engine/p2.test.ts", "result": "pass"},
+      {"file": "src/lib/engine/pipeline.test.ts", "result": "pass"},
+      {"file": "src/lib/engine/final.test.ts", "result": "pass"},
+      {"file": "src/lib/engine/amendment.test.ts", "result": "pass"},
+      {"file": "src/lib/engine/fix1.test.ts", "result": "pass"}
+    ],
+    "tests_failed": [],
+    "totals": "75 passed / 0 failed",
+    "typecheck": "clean"
+  },
+  "corrections_review": {
+    "balance_deadlock_split": {
+      "status": "done",
+      "expected_behavior": "普通平衡枚举不得自动死机。",
+      "actual_behavior": "DeadlockStateKind 独立；legacyBalanceGrantsDeadlock 恒 false。",
+      "evidence": [{"file": "src/lib/engine/deadlock-gate.ts", "symbol": "legacyBalanceGrantsDeadlock", "detail": "stable_deadlock/dual_ghost_deadlock return false"}],
+      "test_evidence": ["DH01"],
+      "deviation": false,
+      "notes": "驾驶成功仍可写旧 balance 名，但不写 deadlock_state。"
+    },
+    "deadlock_logic_gate": {
+      "status": "done",
+      "expected_behavior": "真实规则冲突而非数值相等。",
+      "actual_behavior": "evaluateDeadlockLogic 五检；相等无冲突=invalid_logic。",
+      "evidence": [{"file": "src/lib/engine/deadlock-gate.ts", "symbol": "evaluateDeadlockLogic", "detail": "strength after conflict/lock"}],
+      "test_evidence": ["DH02", "DH03"],
+      "deviation": false,
+      "notes": ""
+    },
+    "plan_evaluator_ai_limit": {
+      "status": "done",
+      "expected_behavior": "只解析结构化，不宣布成功。",
+      "actual_behavior": "parseSupernaturalPlan 只填 participants/interactions/goal。",
+      "evidence": [{"file": "src/lib/engine/plan-evaluator.ts", "symbol": "parseSupernaturalPlan", "detail": "no success flag"}],
+      "test_evidence": ["DH08"],
+      "deviation": false,
+      "notes": "本轮为规则层解析器，未接在线 LLM。"
+    },
+    "heteromorph_requires_deadlock": {
+      "status": "done",
+      "expected_behavior": "无死机 not_eligible；保护看具体 effect。",
+      "actual_behavior": "isTrueDeadlockState 前置；read_memory_only/tag-only 失败。",
+      "evidence": [{"file": "src/lib/engine/heteromorph-gate.ts", "symbol": "evaluateHeteromorphLogic", "detail": "VALID_PROTECT list"}],
+      "test_evidence": ["DH05", "DH06", "DH07"],
+      "deviation": false,
+      "notes": ""
+    },
+    "phase_order": {
+      "status": "done",
+      "expected_behavior": "同一计划严格阶段写回；后失败不抹前成功。",
+      "actual_behavior": "normalizePhases 固定顺序；DH09 保留 deadlock。",
+      "evidence": [{"file": "src/lib/engine/transition.ts", "symbol": "resolveSupernaturalPlan", "detail": "write deadlock before hetero gate"}],
+      "test_evidence": ["DH08", "DH09"],
+      "deviation": false,
+      "notes": ""
+    },
+    "dice_cannot_override": {
+      "status": "done",
+      "expected_behavior": "invalid_logic+01 不得死机。",
+      "actual_behavior": "resolveAction supernatural_plan 先门后骰；不合格不写 deadlock。",
+      "evidence": [{"file": "src/lib/engine/resolution.ts", "symbol": "supernatural_plan", "detail": "hard_block if not eligible"}],
+      "test_evidence": ["DH04"],
+      "deviation": false,
+      "notes": ""
+    },
+    "revival_100": {
+      "status": "done",
+      "expected_behavior": "非显式路线不异类。",
+      "actual_behavior": "settleNaturalRevival 不改 transition_state。",
+      "evidence": [{"file": "src/lib/engine/natural-revival.ts", "symbol": "settleNaturalRevival", "detail": "no heteromorph write"}],
+      "test_evidence": ["DH10"],
+      "deviation": false,
+      "notes": "未实现完整 RevivalEndpointEngine。"
+    },
+    "visibility": {
+      "status": "done",
+      "expected_behavior": "内部可用 hidden，玩家可见不泄规律。",
+      "actual_behavior": "visible notes 泛化；hidden_text 仅内部。",
+      "evidence": [{"file": "src/lib/engine/deadlock-gate.ts", "symbol": "notes", "detail": "对抗没有形成"}],
+      "test_evidence": ["DH11"],
+      "deviation": false,
+      "notes": ""
+    }
+  },
+  "behavioral_tests": [
+    {"id": "DH01", "status": "pass"},
+    {"id": "DH02", "status": "pass"},
+    {"id": "DH03", "status": "pass"},
+    {"id": "DH04", "status": "pass", "pipeline": "resolveAction"},
+    {"id": "DH05", "status": "pass"},
+    {"id": "DH06", "status": "pass"},
+    {"id": "DH07", "status": "pass"},
+    {"id": "DH08", "status": "pass"},
+    {"id": "DH09", "status": "pass"},
+    {"id": "DH10", "status": "pass"},
+    {"id": "DH11", "status": "pass", "pipeline": "resolveAction+visibility"},
+    {"id": "DH12", "status": "pass", "pipeline": "resolveAction"}
+  ],
+  "regression_tests": {
+    "p2_p3ab": "pass",
+    "containment_d100": "pass",
+    "current_strength_driving": "pass",
+    "hidden_export": "pass"
+  },
+  "deviations": [],
+  "implementation_ambiguities": [
+    "在线 AI 解析未接线，结构化 plan 由调用方或关键词 parseSupernaturalPlan 提供。",
+    "复杂方案分三次 D100 未实现，主管道一次骰 + 硬门。",
+    "驾驶碰撞产生的 dual_ghost_deadlock 仍是 BalanceState 别名，不是 DeadlockState。"
+  ],
+  "technical_debt": [
+    "UI 尚无自然语言方案面板。",
+    "RevivalEndpointEngine 未做。"
+  ],
+  "architecture_drift": {
+    "detected": false,
+    "items": ["P2 关押硬门未改", "P3 自然复苏公式未改", "force_drive 显式分离未改"]
+  },
+  "freeze_status": {
+    "p2_base": "frozen",
+    "p3_ab": "frozen",
+    "p3_b2": "applied",
+    "do_not_open": ["Scheduler", "Hidden Roll", "Event Clock", "NPC Autonomy", "梦境", "鬼域", "交易"]
+  },
+  "next_required_work": [
+    {"priority": "P3", "title": "方案输入 UI 与可见阶段日志", "reason": "引擎已可跑", "blocking": false},
+    {"priority": "P3", "title": "RevivalEndpointEngine", "reason": "规范明确本轮不做", "blocking": false}
+  ],
+  "final_assessment": "P3-B2 死机/异类硬门与方案审查已落地，DH01-DH12 与既有回归均通过。建议冻结本层顺序与门控，下一步只接 UI 与复苏终点，不再把平衡枚举当作死机。"
+}

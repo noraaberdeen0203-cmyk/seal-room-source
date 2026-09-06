@@ -1,0 +1,270 @@
+{
+  "document_type": "seal_room_p3ab_correction_spec",
+  "project_name": "隔绝室",
+  "project_name_en": "Seal Room",
+  "target_version": "0.1.2-P2-amendment-01_P3-A-B-fix1",
+  "language": "zh-CN",
+  "purpose": "在P2 Amendment 01与P3-A/B自然复苏基线已通过的前提下，修复长时间跳跃中的死机误判、复苏100阈值穿越、再次建立多鬼平衡后的anchor一致性，以及长期自然复苏的小数精度问题。",
+  "source_of_truth_priority": [
+    "本文件",
+    "seal_room_p2_amendment01_p3ab_spec.json",
+    "seal_room_v0_1_2_p2_final_correction_spec.json",
+    "seal_room_v0_1_2_p2_correction_spec.json"
+  ],
+  "baseline_keep": [
+    "普通驾驭资格继续使用current_strength / current-equivalent opposition",
+    "max_strength只表示完整复苏上限与未来潜在失衡，不作为普通驾驭硬门",
+    "contained ghost完整关押期间runtime_frozen",
+    "新鬼驾驭成功当刻current保持冻结值连续",
+    "非死机鬼使用awakening anchor向max推进",
+    "自然复苏仅在long_time_skip结算",
+    "单鬼自然复苏基准约每30天+10",
+    "有效多鬼平衡自然复苏倍率必然小于1",
+    "普通场景分钟/小时推进不自动增加自然复苏",
+    "不引入revival_stress或小时级natural revival accumulator",
+    "P2关押硬门、KillingRule、force_drive、StackingEngine、hidden隔离继续冻结"
+  ],
+  "required_corrections": {
+    "C01_deadlock_zero_multiplier_requires_live_p2_check": {
+      "priority": "P0",
+      "problem": "当前长期自然复苏可能仅因存在revival_deadlock标记就直接multiplier=0，存在死机鬼已无法压住其他鬼但仍永久停复苏的风险。",
+      "required_behavior": {
+        "hard_rule": "长期自然复苏是否被压制，必须调用/复用P2当前死机判定，而不是只读deadlock标签。",
+        "condition": "deadlock scope覆盖revival AND deadlocked.current_strength > sum(related_other.current_strength)",
+        "equal_case": "相等视为压制失效，按普通balance_multiplier结算自然复苏。",
+        "weaker_case": "deadlocked.current_strength < related sum时压制失效。",
+        "label_role": "revival_deadlock等标签只表示结构/作用域，不得单独决定multiplier=0。",
+        "segment_rule": "若long_time_skip跨越死机解除节点，只对死机有效时间段给0；解除后的区段按当时balance multiplier结算。调用方可传已知分段，不要求逐日模拟。"
+      }
+    },
+    "C02_long_skip_must_stop_at_revival_100": {
+      "priority": "P0",
+      "problem": "long_time_skip若直接把自然复苏一次加完，可能把revival从82算到112并跳过宿主在中途已达到100的死亡/复苏节点。",
+      "required_behavior": {
+        "cap_semantics": "revival_degree有效区间为0~100；不得让正常角色存档以>100继续活着。",
+        "preflight": [
+          "计算计划跳时段的自然复苏速率/总增量",
+          "计算当前revival到100还差多少",
+          "若计划跳时会跨过100，先求首次达到100的时间点"
+        ],
+        "threshold_time_formula": "days_to_100 = (100 - current_revival) / (10 / 30 * effective_balance_multiplier)，仅适用于该时间段倍率恒定且>0。",
+        "interrupt": {
+          "type": "revival_threshold",
+          "requested_end_calendar": "保留原请求目标日",
+          "actual_end_calendar": "截断到首次达到100的日历点",
+          "revival_degree": 100,
+          "remaining_skip_days": "记录尚未执行的剩余跳时"
+        },
+        "after_interrupt": "立即进入P2 revival=100结算（厉鬼复苏/宿主死亡/特殊状态/异类等），不得自动继续剩余剧情跳时。",
+        "deadlock_case": "若当前有效revival deadlock使自然复苏倍率=0，则不会因自然复苏触发100阈值；但仍可被其他即时规则改变。",
+        "segment_case": "若跳时包含多个已知balance/deadlock区段，应按区段顺序寻找最早的100阈值，不得先把全段增量求和后再截断。"
+      }
+    },
+    "C03_reanchor_all_non_deadlock_ghosts_after_new_balance": {
+      "priority": "P1",
+      "problem": "再次成功驾驭新鬼并显著降低revival时，旧鬼若保留旧anchor，可能出现revival下降但旧鬼current卡在高anchor不响应新平衡。",
+      "required_behavior": {
+        "trigger": "每次成功建立新的整体多鬼平衡（standard driving成功或明确形成新整体平衡的等价事件）",
+        "targets": "所有当前已驾驭、非deadlocked、非runtime_frozen的GhostEntity",
+        "ordering": [
+          "完成本次simultaneous collision并得到平衡结果",
+          "确定本次平衡结算后的各鬼连续current值",
+          "应用新的revival_degree",
+          "将每只非死机鬼anchor_revival_degree重设为新的revival_degree",
+          "将每只非死机鬼anchor_current_strength重设为该鬼本次平衡结算后的连续current值"
+        ],
+        "continuity": "重建anchor不得制造current瞬时跳变。",
+        "new_ghost": "新驾驭鬼仍以冻结current作为其新anchor_current。",
+        "deadlock_exception": "死机鬼不重建awakening anchor，继续由自身状态机维护current。"
+      }
+    },
+    "C04_revival_internal_precision": {
+      "priority": "P2",
+      "problem": "长剧情跳时可能产生4.9等小数复苏增量，若每次round后更新anchor calendar会累积舍入误差。",
+      "required_behavior": {
+        "storage": "revival_degree内部允许小数，建议保留至少2位精度。",
+        "calculation": "所有规则结算使用内部精确值，不额外创建natural_revival_accumulator。",
+        "ui": "玩家UI仍可显示整数；显示层round/floor策略集中配置，不回写内部值。",
+        "bounds": "内部值仍clamp到0~100。",
+        "save": "存档必须保留小数值，不得导出时截断。",
+        "migration": "旧整数存档天然兼容。"
+      }
+    }
+  },
+  "canonical_long_time_skip_pipeline": [
+    "接收long_time_skip请求与目标world_calendar",
+    "确认不是活跃场景中的普通等待",
+    "读取natural_revival_anchor_calendar",
+    "获得需要结算的日期区间",
+    "读取当前hosted GhostEntity与balance state",
+    "调用P2 deadGhostSuppressesRevival或等价实时函数确认死机是否真正有效",
+    "得到当前区段effective_balance_multiplier",
+    "若存在剧本明确的死机解除/平衡变化节点，按节点拆成少量区段",
+    "对每个区段依次计算自然复苏速率",
+    "在应用区段增量前检查是否会首次达到revival=100",
+    "若会达到100，求threshold calendar并截断long_time_skip",
+    "将revival设为100并立即返回revival_threshold interrupt",
+    "调用P2复苏/宿主结算，不自动执行剩余跳时",
+    "若未触发100，应用该区段自然复苏小数增量",
+    "按awakening anchor重算所有非死机鬼current",
+    "完成全部区段后更新world_calendar与natural_revival_anchor_calendar",
+    "重新计算player_current_strength"
+  ],
+  "canonical_rebalance_anchor_pipeline": [
+    "驾驭/特殊事件成功建立新的整体平衡",
+    "保存每只相关Ghost在平衡结算后的连续current",
+    "结算新的revival_degree",
+    "遍历所有已驾驭非死机鬼",
+    "设置anchor_revival_degree=新的revival_degree",
+    "设置anchor_current_strength=对应连续current",
+    "新鬼使用其contained frozen current",
+    "死机鬼跳过",
+    "后续revival上升时再由各自anchor向max插值"
+  ],
+  "examples": {
+    "threshold_interrupt_single_ghost": {
+      "start_revival": 82,
+      "multiplier": 1.0,
+      "requested_skip_days": 90,
+      "natural_rate_per_day": 0.3333333333,
+      "days_to_100": 54,
+      "expected": "实际只跳54天，revival=100，产生revival_threshold interrupt，剩余36天不自动执行。"
+    },
+    "deadlock_label_but_failed_suppression": {
+      "deadlocked_current": 1200,
+      "related_others_sum": 1500,
+      "deadlock_scope": "revival",
+      "expected": "死机压制失效，不得multiplier=0。"
+    },
+    "deadlock_equal": {
+      "deadlocked_current": 1500,
+      "related_others_sum": 1500,
+      "expected": "严格大于不成立，按普通balance_multiplier结算。"
+    },
+    "fractional_revival": {
+      "skip_days": 21,
+      "multiplier": 0.7,
+      "delta": 4.9,
+      "expected": "内部revival精确增加4.9；UI可显示整数；不建立额外accumulator。"
+    }
+  },
+  "required_tests": [
+    {
+      "id": "FIX01",
+      "pipeline": "settleNaturalRevival -> P2 deadlock check",
+      "setup": "revival_deadlock标签存在，但deadlocked.current < related sum",
+      "expected": "natural multiplier不为0"
+    },
+    {
+      "id": "FIX02",
+      "pipeline": "settleNaturalRevival -> P2 deadlock check",
+      "setup": "deadlocked.current == related sum",
+      "expected": "压制失效，正常自然复苏"
+    },
+    {
+      "id": "FIX03",
+      "pipeline": "long_time_skip",
+      "setup": "revival=82, single ghost, skip90d",
+      "expected": "约54天截断，revival=100，返回revival_threshold，剩余天数未执行"
+    },
+    {
+      "id": "FIX04",
+      "pipeline": "long_time_skip segmented",
+      "setup": "前60天有效deadlock，后60天普通单鬼/无平衡；起始revival=85",
+      "expected": "前60天+0，后续约45天达到100并截断，不继续余下15天"
+    },
+    {
+      "id": "FIX05",
+      "pipeline": "resolveAction driving",
+      "setup": "旧鬼anchor高于驾驭第三鬼成功后的新revival",
+      "expected": "所有非死机鬼在新平衡点重建anchor，current不瞬跳"
+    },
+    {
+      "id": "FIX06",
+      "pipeline": "resolveAction driving",
+      "setup": "新鬼frozen current=650",
+      "expected": "新anchor_current仍为650"
+    },
+    {
+      "id": "FIX07",
+      "pipeline": "long_time_skip",
+      "setup": "21d, multiplier=0.7",
+      "expected": "内部delta=4.9，不因round丢失"
+    },
+    {
+      "id": "FIX08",
+      "pipeline": "save/load",
+      "setup": "revival_degree含小数",
+      "expected": "保存加载后数值保持，不截断"
+    },
+    {
+      "id": "REG01",
+      "pipeline": "resolveAction",
+      "expected": "驾驭资格仍基于current而非max/attack"
+    },
+    {
+      "id": "REG02",
+      "pipeline": "scene_wait",
+      "setup": "等待6小时",
+      "expected": "自然复苏仍为0"
+    },
+    {
+      "id": "REG03",
+      "pipeline": "containment",
+      "expected": "关押硬门/D100规则无回归"
+    },
+    {
+      "id": "REG04",
+      "pipeline": "hidden/export",
+      "expected": "hidden隔离无回归"
+    }
+  ],
+  "implementation_constraints": [
+    "不要重新设计完整P2",
+    "不要恢复max_strength驾驭硬门",
+    "不要加入小时级natural revival",
+    "不要加入revival_stress",
+    "不要逐日模拟long_time_skip",
+    "不要新增复杂future risk百分比",
+    "不要展开Scheduler/Hidden Roll/Event Clock/NPC Autonomy",
+    "不要自动继续跨过revival=100之后的剩余跳时",
+    "不要仅凭deadlock标签把长期自然复苏倍率设为0"
+  ],
+  "post_implementation_audit": {
+    "required": true,
+    "mode": "read_only",
+    "output_file": "seal_room_p3ab_fix1_audit.json",
+    "must_stop_coding_before_audit": true,
+    "must_verify": [
+      "deadlock multiplier=0是否调用实时P2严格大于判定",
+      "equal deadlock是否正确失效",
+      "long_time_skip是否能在revival=100精确/近似日期截断",
+      "截断后是否不自动执行剩余skip",
+      "分段deadlock解除后是否按区段寻找最早100阈值",
+      "再次建立多鬼平衡时是否给所有非死机鬼重建anchor",
+      "重建anchor是否保持current连续",
+      "revival内部小数是否保留到save/load",
+      "是否没有引入natural_revival_accumulator/revival_stress",
+      "P2关押/驾驭current口径/hidden是否无回归"
+    ],
+    "minimum_sections": [
+      "overall_verdict",
+      "source_of_truth",
+      "repository_inspection",
+      "corrections_review",
+      "long_time_skip_review",
+      "deadlock_review",
+      "awakening_anchor_review",
+      "precision_review",
+      "behavioral_tests",
+      "regression_tests",
+      "deviations",
+      "implementation_ambiguities",
+      "technical_debt",
+      "architecture_drift",
+      "freeze_status",
+      "next_required_work",
+      "final_assessment"
+    ]
+  }
+}

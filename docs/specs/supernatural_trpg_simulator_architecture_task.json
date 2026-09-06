@@ -1,0 +1,1279 @@
+{
+  "document_type": "project_architecture_task",
+  "project_name": "神秘复苏风格跑团式AI模拟器",
+  "version": "0.1.0",
+  "language": "zh-CN",
+  "target_platform": "Grok Build / Web App",
+  "purpose": "为后续搭建一个可扩展的跑团式灵异生存模拟器提供完整架构任务说明。本文件只描述系统结构、数据模型、判定机制、模块接口和开发要求，不包含具体角色剧情数据。",
+  "scope_policy": {
+    "include": [
+      "模拟器底层架构",
+      "跑团式回合流程",
+      "D100骰子判定机制",
+      "灵异规律优先原则",
+      "角色与NPC数据结构",
+      "事件与场景数据结构",
+      "隐藏信息与玩家可见信息分离",
+      "GM引擎与AI叙事约束",
+      "前端页面结构",
+      "后端逻辑模块",
+      "内容包扩展机制",
+      "测试与验收标准"
+    ],
+    "exclude": [
+      "具体原创角色数值",
+      "具体剧情事件数据",
+      "具体原著人物卡",
+      "具体厉鬼案例",
+      "具体世界线剧透",
+      "任何固定不可修改的剧情结局"
+    ]
+  },
+  "core_design_principles": [
+    {
+      "id": "rule_first",
+      "name": "灵异规律优先",
+      "description": "厉鬼规律、媒介、触发条件、机制匹配优先于骰子和数值。玩家行为若明确触发规律，先结算规律，再判断是否存在合适机制抵挡或延缓。"
+    },
+    {
+      "id": "dice_not_magic",
+      "name": "骰子不否定硬规则",
+      "description": "D100骰子用于判定观察、执行、控制、压制、逃脱、关押、驾驭和代价程度，不能让角色凭高点数无视已经成立的必死规律。"
+    },
+    {
+      "id": "strength_not_hazard",
+      "name": "灵异强度与危害等级分离",
+      "description": "灵异强度衡量个体或灵异拼图的规则质量、对抗上限与压制力；危害等级衡量事件对社会、区域和普通人的失控风险。高强度厉鬼可以低危害，低强度厉鬼也可能高危害。"
+    },
+    {
+      "id": "nonlinear_pyramid",
+      "name": "非线性金字塔强度结构",
+      "description": "灵异强度不按线性升级，也不按驾驭厉鬼数量累加。越高层级越稀有，层级间存在明显断层。"
+    },
+    {
+      "id": "stacking_system",
+      "name": "灵异叠加独立建模",
+      "description": "基础灵异强度与叠加后实战压制力必须分开。叠加不是乘法，而是提高规则压制密度、重复判定次数、容错率、代价分担能力和机制组合效果。"
+    },
+    {
+      "id": "knowledge_as_reward",
+      "name": "信息是核心奖励",
+      "description": "玩家真正的进展不只是数值提升，而是获得杀人规律、媒介、源头、封锁方式、关押窗口、失败代价等信息。"
+    },
+    {
+      "id": "player_perspective_lock",
+      "name": "玩家认知视角锁定",
+      "description": "系统必须区分玩家当前可见信息和GM隐藏真相。AI叙事不得提前透露玩家角色当前不应知道的内容。"
+    },
+    {
+      "id": "survival_over_combat",
+      "name": "生存优先于战斗",
+      "description": "核心体验不是打怪升级，而是在未知规律、有限资源、身体侵蚀和复苏压力下，通过观察、封锁、推理、逃离、压制或关押求生。"
+    }
+  ],
+  "high_level_architecture": {
+    "frontend": {
+      "description": "负责角色创建、剧情显示、行动输入、骰子展示、状态面板、线索板、事件时钟和GM日志可视化。",
+      "recommended_stack": [
+        "React 或等价前端框架",
+        "TypeScript",
+        "LocalStorage / IndexedDB 初期存档",
+        "后续可接入云数据库"
+      ]
+    },
+    "backend_or_engine": {
+      "description": "负责判定流程、事件状态推进、骰子结算、GM隐藏信息管理、AI提示词组装、存档读写和内容包加载。",
+      "modules": [
+        "DiceEngine",
+        "RuleEngine",
+        "SupernaturalEngine",
+        "HazardEngine",
+        "CharacterEngine",
+        "EventClockEngine",
+        "KnowledgeEngine",
+        "InventoryEngine",
+        "GMNarrationEngine",
+        "SaveLoadEngine",
+        "ContentPackLoader"
+      ]
+    },
+    "ai_layer": {
+      "description": "AI不直接掌控硬规则，而是在规则引擎输出的判定结果、可见信息、隐藏限制和叙事风格约束下生成文本。",
+      "required_behavior": [
+        "按玩家当前认知叙述",
+        "不提前剧透GM隐藏真相",
+        "不让骰子违背灵异硬规则",
+        "保持冷峻、压抑、规则导向的灵异生存氛围",
+        "玩家行动不明确时提出有限追问或给出可选行动",
+        "失败时给出代价和线索，而不是简单Game Over"
+      ]
+    }
+  },
+  "data_layers": {
+    "player_visible_context": {
+      "description": "玩家角色当前知道、能感知、能合理推断的信息。",
+      "examples_of_content_types": [
+        "当前地点",
+        "已知NPC称呼",
+        "已知自身状态",
+        "已知灵异物品表面效果",
+        "当前线索",
+        "已确认规律",
+        "可见异常"
+      ]
+    },
+    "gm_hidden_context": {
+      "description": "GM知道但玩家暂时不知道的真相、后续伏笔、NPC真实身份、事件源头、厉鬼完整规律。",
+      "rules": [
+        "不得直接输出给玩家",
+        "只能在触发揭示条件后部分转入玩家可见信息",
+        "AI叙事可以暗示，但不能无条件明示"
+      ]
+    },
+    "system_rules": {
+      "description": "不可被普通剧情改变的底层规则，例如厉鬼无法被真正杀死、黄金隔绝灵异、复苏风险、关押条件等。"
+    },
+    "content_packs": {
+      "description": "独立内容扩展包，可包含角色、地点、厉鬼、灵异物品、事件、组织、剧情钩子，但必须遵守底层schema。"
+    }
+  },
+  "core_numeric_system": {
+    "attributes": [
+      {
+        "id": "supernatural_strength",
+        "name": "灵异强度",
+        "range": "0-10000",
+        "definition": "个体、厉鬼、灵异物品或灵异拼图当前可稳定施加的灵异质量、规则优先级、压制力、对抗上限。",
+        "notes": [
+          "不等于危害等级",
+          "不等于职位",
+          "不等于驾驭厉鬼数量",
+          "必须采用非线性金字塔结构",
+          "可拆分为基础灵异强度与叠加后实战压制力"
+        ]
+      },
+      {
+        "id": "revival_degree",
+        "name": "复苏度",
+        "range": "0-100",
+        "definition": "角色体内厉鬼接近失控、夺取主导或规律外泄的程度。",
+        "notes": [
+          "复苏度上升可能带来能力活跃",
+          "复苏度上升也会增加失控、身体异常、意识污染和被动触发风险"
+        ]
+      },
+      {
+        "id": "body",
+        "name": "身体",
+        "range": "0-100",
+        "definition": "角色作为活人的完整程度。越高越像普通活人，越低越接近死人或厉鬼载体。",
+        "notes": [
+          "身体高时普通伤害威胁更大，但伪装正常、医疗和行动更自然",
+          "身体低时普通致命伤威胁下降，但灵异侵蚀、社交异常和复苏风险上升"
+        ]
+      },
+      {
+        "id": "anchor",
+        "name": "意识锚点",
+        "range": "0-100",
+        "definition": "角色自我认知、记忆稳定性、人格连续性和抵抗意识污染的能力。",
+        "notes": [
+          "梦境、身份改写、记忆污染、厉鬼意识侵蚀会降低此值",
+          "低值时容易出现人格覆盖、记忆混淆、行为异常"
+        ]
+      },
+      {
+        "id": "control",
+        "name": "灵异掌控度",
+        "range": "0-100",
+        "definition": "角色对自身驾驭灵异的熟练度、稳定调用能力和风险控制能力。",
+        "notes": [
+          "强度高但掌控低时，角色底子强但实战不稳定",
+          "掌控度可通过训练、事件经验、规律理解和代价积累提升"
+        ]
+      },
+      {
+        "id": "analysis_base",
+        "name": "规律解析基础",
+        "range": "0-100",
+        "definition": "角色在没有额外线索时，通过观察和推理识别灵异规律的基础能力。"
+      }
+    ],
+    "event_specific_values": [
+      {
+        "id": "rule_analysis_progress",
+        "name": "规律解析度",
+        "range": "0-100",
+        "definition": "针对单个事件的已掌握规律比例。随观察、试探、情报、失败代价和线索收集变化。"
+      },
+      {
+        "id": "event_instability",
+        "name": "事件失控度",
+        "range": "0-100",
+        "definition": "事件距离扩散、升级或彻底失控的进度。错误行动、围观、直播、驭鬼者乱用灵异会提高；正确封锁和确认规律会降低或暂停增长。"
+      },
+      {
+        "id": "hazard_strength",
+        "name": "事件危害强度",
+        "range": "0-10000",
+        "definition": "事件整体社会危害、扩散风险和封锁难度的综合量化。独立于源头灵异强度。"
+      }
+    ]
+  },
+  "strength_model": {
+    "description": "灵异强度使用可配置分层，不在本架构文件内绑定具体角色数据。",
+    "required_features": [
+      "支持基础灵异强度",
+      "支持叠加后实战压制力",
+      "支持机制标签优先级",
+      "支持非线性阶位差修正",
+      "支持高强度低危害事件",
+      "支持低强度高危害事件"
+    ],
+    "strength_record_schema": {
+      "base_strength": "number",
+      "effective_strength": "number",
+      "burst_strength": "number",
+      "stacked_pressure": "number",
+      "tier": "number",
+      "notes": "string"
+    },
+    "tier_policy": {
+      "description": "阶位应由配置文件定义，不写死在代码中，方便后续根据世界观标尺调整。",
+      "required_fields": [
+        "tier_id",
+        "min_strength",
+        "max_strength",
+        "label",
+        "description"
+      ]
+    }
+  },
+  "stacking_model": {
+    "description": "灵异叠加用于模拟多个自己、多件灵异物品、多重鬼域、多次规律记录、媒介网络、替死结构等造成的实战压制力提升。",
+    "fields": {
+      "stacking_efficiency": {
+        "range": "0-6",
+        "definition": "叠加效率，越高表示越能把多个灵异压向同一结果。"
+      },
+      "stacking_cap": {
+        "range": "0-6",
+        "definition": "理论叠加上限。"
+      },
+      "current_stack_layers": {
+        "type": "number",
+        "definition": "当前成立的叠加层数。"
+      },
+      "stacking_sources": {
+        "type": "array",
+        "definition": "叠加来源，如多个自身、灵异物品、鬼域、记录、媒介、鬼奴网络。"
+      },
+      "stacking_conditions": {
+        "type": "array",
+        "definition": "叠加成立需要的条件，如准备、媒介、环境、身体承载、复苏代价。"
+      },
+      "stacking_risks": {
+        "type": "array",
+        "definition": "叠加失败或过度叠加带来的反噬。"
+      }
+    },
+    "rules": [
+      "叠加不是线性乘法",
+      "叠加提高规则压制密度、重复判定次数、容错率和代价分担",
+      "叠加必须满足条件，不得无条件套用最高实战压制力",
+      "叠加失败应增加复苏度、身体损耗、意识污染或事件失控度"
+    ]
+  },
+  "hazard_model": {
+    "hazard_grades": [
+      {
+        "grade": "C",
+        "definition": "范围较小、扩散慢、可封锁、可暂缓处理。源头灵异强度可高可低。"
+      },
+      {
+        "grade": "B",
+        "definition": "已有明显伤亡，封锁压力增加，可能威胁一片区域。"
+      },
+      {
+        "grade": "A",
+        "definition": "可能造成大规模伤亡，负责人必须介入，常规处理方式高风险。"
+      },
+      {
+        "grade": "S",
+        "definition": "城市级或更高灾难，常规封锁、疏散、关押体系大面积失效。"
+      }
+    ],
+    "hazard_factors": [
+      "杀人效率",
+      "触发条件宽窄",
+      "游荡性",
+      "扩散性",
+      "可封锁性",
+      "可关押性",
+      "是否牵连其他厉鬼",
+      "社会暴露程度",
+      "是否能通过视频、声音、梦境、名字、关系、物品转移等媒介传播",
+      "普通人是否会因恐慌主动扩大媒介",
+      "驭鬼者介入是否会刺激源头"
+    ],
+    "rules": [
+      "危害等级是管理评级，不是战斗力评级",
+      "源头灵异强度不得直接决定危害等级",
+      "事件等级可因玩家或NPC行为动态升级或降级",
+      "同一源头在不同场景可形成不同危害等级"
+    ],
+    "event_record_schema": {
+      "source_strength": "number",
+      "hazard_grade": "C|B|A|S",
+      "hazard_strength": "number",
+      "instability": "number",
+      "hazard_factors": "array",
+      "lockdown_status": "string",
+      "containment_status": "string"
+    }
+  },
+  "dice_system": {
+    "dice_type": "D100",
+    "basic_rule": "投掷1D100，结果小于或等于目标值则成功，结果大于目标值则失败。",
+    "result_margin": {
+      "formula": "margin = target_value - dice_result",
+      "levels": [
+        {
+          "range": ">= 40",
+          "label": "大成功",
+          "effect": "行动效果显著，额外获得线索或降低代价，但不能违背灵异硬规则。"
+        },
+        {
+          "range": "10 to 39",
+          "label": "成功",
+          "effect": "行动成功，按正常代价结算。"
+        },
+        {
+          "range": "0 to 9",
+          "label": "险胜",
+          "effect": "行动勉强成功，但增加额外代价、留下隐患或效果不完整。"
+        },
+        {
+          "range": "-1 to -20",
+          "label": "失败但获得信息",
+          "effect": "行动失败，但获得有价值线索，同时结算轻到普通代价。"
+        },
+        {
+          "range": "-21 to -49",
+          "label": "严重失败",
+          "effect": "行动失败，复苏、身体、意识或事件失控度明显恶化。"
+        },
+        {
+          "range": "<= -50",
+          "label": "灾难失败",
+          "effect": "行动导致重大代价、事件升级、NPC死亡、媒介扩散或自身陷入濒死。"
+        }
+      ]
+    },
+    "critical_rules": [
+      {
+        "roll": 1,
+        "label": "极端成功",
+        "rule": "获得最佳可行结果，但仍不能无视机制不匹配或已经成立的必死规律。"
+      },
+      {
+        "roll": 100,
+        "label": "极端失败",
+        "rule": "必然产生额外代价或事件升级。"
+      }
+    ],
+    "public_and_hidden_rolls": {
+      "public_rolls": [
+        "玩家明确行动",
+        "观察",
+        "逃跑",
+        "封锁",
+        "使用灵异",
+        "关押",
+        "驾驭",
+        "谈判"
+      ],
+      "hidden_rolls": [
+        "厉鬼暗中标记",
+        "场外扩散",
+        "NPC隐瞒信息",
+        "梦境污染",
+        "追杀者接近",
+        "隐藏势力追踪",
+        "事件时钟推进"
+      ]
+    }
+  },
+  "action_resolution_pipeline": [
+    {
+      "step": 1,
+      "name": "解析玩家行动",
+      "description": "识别玩家意图、目标、使用工具、涉及NPC、所在场景、可能触发的灵异媒介。"
+    },
+    {
+      "step": 2,
+      "name": "检查是否触发厉鬼规律",
+      "description": "判断看见、听见、回应、触碰、进入、阅读、喊名、录像、救援、攻击媒介等行为是否让规律成立。"
+    },
+    {
+      "step": 3,
+      "name": "判断机制是否匹配",
+      "description": "检查玩家使用的能力是否能处理当前问题。机制不匹配时，不允许直接成功，只能拖延、降低代价或获得线索。"
+    },
+    {
+      "step": 4,
+      "name": "计算目标值",
+      "description": "依据行动类型、属性、线索、工具、机制匹配、环境、强度阶位差、事件失控度、复苏干扰计算D100目标值。"
+    },
+    {
+      "step": 5,
+      "name": "投骰并判定结果等级",
+      "description": "执行明骰或暗骰，计算margin并映射到大成功、成功、险胜、失败但获得信息、严重失败、灾难失败。"
+    },
+    {
+      "step": 6,
+      "name": "结算灵异对抗与叠加",
+      "description": "若涉及灵异对抗，先按机制标签，再按强度阶位，再应用叠加修正。"
+    },
+    {
+      "step": 7,
+      "name": "结算代价",
+      "description": "更新复苏度、身体、意识锚点、灵异物品破损、事件失控度、NPC状态、环境变化。"
+    },
+    {
+      "step": 8,
+      "name": "更新信息层",
+      "description": "将玩家通过行动合理获得的线索转入player_visible_context；隐藏真相仍留在gm_hidden_context。"
+    },
+    {
+      "step": 9,
+      "name": "AI叙事输出",
+      "description": "AI根据可见信息、判定结果、叙事限制、场景状态生成下一段文本与可选行动。"
+    }
+  ],
+  "action_types": {
+    "observe": {
+      "description": "观察环境、尸体、异常物、NPC反应或灵异现象。",
+      "uses": [
+        "规律解析基础",
+        "当前线索",
+        "现场干扰"
+      ],
+      "possible_outputs": [
+        "获得线索",
+        "发现媒介",
+        "误判",
+        "被视线/声音/文字类规律标记"
+      ]
+    },
+    "lockdown": {
+      "description": "封锁现场、驱散人群、阻断传播、切断媒介。",
+      "uses": [
+        "组织资源",
+        "现场权限",
+        "危害因素判断",
+        "执行力"
+      ],
+      "possible_outputs": [
+        "事件失控度下降",
+        "扩散暂停",
+        "封锁失败",
+        "社会恐慌上升"
+      ]
+    },
+    "evade": {
+      "description": "躲避厉鬼、逃离现场、避开媒介。",
+      "uses": [
+        "身体",
+        "灵异强度",
+        "机制匹配",
+        "环境路线"
+      ],
+      "possible_outputs": [
+        "逃离",
+        "拖延",
+        "被标记",
+        "触发新规律"
+      ]
+    },
+    "use_power": {
+      "description": "使用驾驭灵异、鬼域、灵异物品或特殊拼图。",
+      "uses": [
+        "灵异掌控度",
+        "复苏度",
+        "机制匹配",
+        "强度阶位"
+      ],
+      "possible_outputs": [
+        "压制",
+        "防护",
+        "延缓",
+        "反噬",
+        "复苏上升",
+        "身体下降"
+      ]
+    },
+    "contain": {
+      "description": "尝试关押厉鬼或封存灵异物。",
+      "prerequisites": [
+        "确认源头",
+        "源头存在于现实",
+        "找到操作窗口",
+        "黄金或等价隔绝物有效",
+        "关押行为不会造成更大危害"
+      ],
+      "possible_outputs": [
+        "成功关押",
+        "只关押媒介",
+        "关押失败",
+        "事件升级",
+        "源头脱离现实"
+      ]
+    },
+    "drive_or_bind": {
+      "description": "尝试驾驭、绑定、锚定或平衡新的灵异。",
+      "uses": [
+        "相容性",
+        "身体承载",
+        "复苏空间",
+        "压制物",
+        "机制匹配",
+        "已有灵异结构"
+      ],
+      "possible_outputs": [
+        "成功驾驭",
+        "半驾驭",
+        "成为锚点",
+        "厉鬼复苏",
+        "意识污染",
+        "死亡"
+      ]
+    },
+    "social": {
+      "description": "与NPC谈判、隐瞒、套话、威胁、交易或求助。",
+      "uses": [
+        "立场",
+        "信任",
+        "情报",
+        "筹码",
+        "威胁程度"
+      ],
+      "possible_outputs": [
+        "获得情报",
+        "达成交易",
+        "暴露秘密",
+        "关系恶化",
+        "引来势力关注"
+      ]
+    }
+  },
+  "containment_rules": {
+    "hard_requirements": [
+      "必须确认被关押对象是源头而非鬼奴、媒介、替身或投影",
+      "源头必须在现实中存在或被强制现实化",
+      "必须找到源头规律的可操作窗口",
+      "黄金或等价隔绝手段必须能完整覆盖源头",
+      "关押行为不能导致更大规模伤害或扩散"
+    ],
+    "failure_modes": [
+      "只关押了媒介",
+      "源头失去媒介后脱离现实",
+      "关押行为刺激源头升级",
+      "攻击被网络分摊",
+      "关押者被规律锁定",
+      "黄金容器内只剩空壳"
+    ]
+  },
+  "driving_rules": {
+    "description": "驾驭新灵异是高风险行为，不能作为普通升级按钮。",
+    "required_checks": [
+      "相容性",
+      "身体承载",
+      "当前复苏度",
+      "意识锚点",
+      "是否存在压制物",
+      "源头是否可进入身体",
+      "是否存在平衡方案",
+      "是否会引入无法封锁的事件隐患"
+    ],
+    "possible_outcomes": [
+      "完整驾驭",
+      "临时压制",
+      "半驾驭半失控",
+      "成为现实锚点",
+      "获得部分能力但留下高危隐患",
+      "厉鬼复苏",
+      "意识被替换",
+      "死亡"
+    ]
+  },
+  "cost_model": {
+    "cost_levels": [
+      {
+        "level": "轻微",
+        "revival_delta": "+1 to +3",
+        "body_delta": "0 to -1",
+        "anchor_delta": "0 to -1",
+        "description": "短暂使用或轻微接触灵异。"
+      },
+      {
+        "level": "普通",
+        "revival_delta": "+4 to +8",
+        "body_delta": "-1 to -3",
+        "anchor_delta": "-1 to -3",
+        "description": "正常灵异对抗或中等风险操作。"
+      },
+      {
+        "level": "严重",
+        "revival_delta": "+9 to +15",
+        "body_delta": "-4 to -8",
+        "anchor_delta": "-4 to -8",
+        "description": "强行压制、硬抗、错误使用能力或高强度鬼域对抗。"
+      },
+      {
+        "level": "致命",
+        "revival_delta": "+16 to +25",
+        "body_delta": "-8 to -15",
+        "anchor_delta": "-8 to -15",
+        "description": "赌命行动、濒死驾驭、强行锚定或危险叠加。"
+      },
+      {
+        "level": "崩溃",
+        "revival_delta": "+25 or more",
+        "body_delta": "-15 or more",
+        "anchor_delta": "-15 or more",
+        "description": "进入厉鬼复苏、异类化、意识替换或锚点判定。"
+      }
+    ],
+    "rules": [
+      "每次动用灵异必须结算代价",
+      "成功也要结算代价",
+      "大成功可降低代价但不能取消硬代价",
+      "失败应带来信息、代价或事件变化",
+      "复苏度、身体、意识锚点之间可以联动"
+    ]
+  },
+  "knowledge_system": {
+    "description": "用于管理玩家掌握的信息，避免AI提前剧透。",
+    "knowledge_types": [
+      "confirmed_rule",
+      "suspected_rule",
+      "false_assumption",
+      "known_npc_fact",
+      "known_item_effect",
+      "known_location_fact",
+      "rumor",
+      "hidden_truth"
+    ],
+    "rules": [
+      "玩家只能根据player_visible_context和合理推断行动",
+      "GM隐藏信息需要reveal_condition才能进入可见层",
+      "错误推断可以保留为false_assumption，并在后续剧情中纠正",
+      "重要真相应分阶段揭示"
+    ],
+    "reveal_condition_schema": {
+      "condition_id": "string",
+      "trigger_type": "event|item_use|npc_dialogue|location_discovery|dream_progress|dice_success|time",
+      "requirements": "array",
+      "revealed_fields": "array"
+    }
+  },
+  "character_schema": {
+    "id": "string",
+    "name": "string",
+    "display_name": "string",
+    "type": "player|npc|hidden_npc",
+    "visibility": "known|partially_known|hidden",
+    "current_stage_status": "string",
+    "appearance": {
+      "public_description": "string",
+      "hidden_abnormalities": "array"
+    },
+    "personality": {
+      "visible_traits": "array",
+      "hidden_traits": "array",
+      "behavior_rules": "array"
+    },
+    "background": {
+      "player_known": "string",
+      "gm_hidden": "string"
+    },
+    "stats": {
+      "supernatural_strength": "number",
+      "effective_strength": "number",
+      "burst_strength": "number",
+      "revival_degree": "number",
+      "body": "number",
+      "anchor": "number",
+      "control": "number",
+      "analysis_base": "number"
+    },
+    "powers": [
+      "power_id"
+    ],
+    "items": [
+      "item_id"
+    ],
+    "relationships": [
+      {
+        "target_id": "string",
+        "player_visible_relation": "string",
+        "gm_hidden_relation": "string",
+        "trust": "number",
+        "hostility": "number",
+        "notes": "string"
+      }
+    ],
+    "common_locations": [
+      "location_id"
+    ],
+    "plot_hooks": [
+      "hook_id"
+    ]
+  },
+  "power_schema": {
+    "id": "string",
+    "name": "string",
+    "type": "ghost|ghost_domain|supernatural_item_effect|curse|medium|body_modification|other",
+    "owner_id": "string|null",
+    "base_strength": "number",
+    "effective_strength": "number",
+    "mechanism_tags": [
+      "string"
+    ],
+    "known_effects": [
+      "string"
+    ],
+    "hidden_effects": [
+      "string"
+    ],
+    "activation_conditions": [
+      "string"
+    ],
+    "costs": [
+      "string"
+    ],
+    "limitations": [
+      "string"
+    ],
+    "counterplay": [
+      "string"
+    ],
+    "stacking": {
+      "can_stack": "boolean",
+      "stacking_efficiency": "number",
+      "stacking_cap": "number",
+      "stacking_conditions": [
+        "string"
+      ]
+    }
+  },
+  "item_schema": {
+    "id": "string",
+    "name": "string",
+    "type": "ordinary|supernatural|gold_container|document|medium|unknown",
+    "owner_id": "string|null",
+    "visibility": "known|partially_known|hidden",
+    "origin_player_known": "string",
+    "origin_gm_hidden": "string",
+    "known_usage": "string",
+    "hidden_usage": "string",
+    "risk": "string",
+    "state": "intact|damaged|sealed|unknown",
+    "mechanism_tags": [
+      "string"
+    ]
+  },
+  "event_schema": {
+    "id": "string",
+    "name": "string",
+    "status": "inactive|active|contained|suppressed|escaped|resolved|failed",
+    "hazard_grade": "C|B|A|S|unknown",
+    "source_strength": "number|null",
+    "hazard_strength": "number",
+    "instability": "number",
+    "source_entity_id": "string|null",
+    "source_reality_status": "real|partially_real|not_in_reality|unknown",
+    "known_rules": [
+      "string"
+    ],
+    "hidden_rules": [
+      "string"
+    ],
+    "suspected_rules": [
+      "string"
+    ],
+    "false_assumptions": [
+      "string"
+    ],
+    "hazard_factors": [
+      "string"
+    ],
+    "locations": [
+      "location_id"
+    ],
+    "involved_characters": [
+      "character_id"
+    ],
+    "involved_items": [
+      "item_id"
+    ],
+    "event_clock_rules": [
+      {
+        "condition": "string",
+        "instability_delta": "number",
+        "description": "string"
+      }
+    ],
+    "containment_requirements": [
+      "string"
+    ],
+    "failure_modes": [
+      "string"
+    ],
+    "reveal_conditions": [
+      "condition_id"
+    ]
+  },
+  "location_schema": {
+    "id": "string",
+    "name": "string",
+    "type": "city|district|building|room|supernatural_place|road|unknown",
+    "visibility": "known|partially_known|hidden",
+    "player_known_description": "string",
+    "gm_hidden_description": "string",
+    "hazards": [
+      "event_id|power_id"
+    ],
+    "connected_locations": [
+      "location_id"
+    ],
+    "lockdown_status": "none|partial|full|failed|unknown",
+    "special_rules": [
+      "string"
+    ]
+  },
+  "organization_schema": {
+    "id": "string",
+    "name": "string",
+    "type": "official|folk|corporate|family|unknown",
+    "visibility": "known|partially_known|hidden",
+    "player_known_description": "string",
+    "gm_hidden_description": "string",
+    "attitude_to_player": "friendly|neutral|hostile|unknown|mixed",
+    "resources": [
+      "string"
+    ],
+    "members": [
+      "character_id"
+    ],
+    "rules": [
+      "string"
+    ],
+    "plot_hooks": [
+      "hook_id"
+    ]
+  },
+  "turn_structure": {
+    "standard_turn": [
+      "GM描述当前可见场景",
+      "展示角色状态摘要",
+      "展示已知线索与风险",
+      "玩家输入行动",
+      "系统解析行动并进行必要骰子判定",
+      "结算规律、代价、事件时钟和状态变化",
+      "GM输出结果、获得线索和新的选择"
+    ],
+    "scene_transition": [
+      "保存当前场景状态",
+      "更新地点",
+      "检查追踪者、事件扩散、隐藏时钟",
+      "载入新地点可见信息",
+      "必要时触发暗骰"
+    ],
+    "dream_or_memory_turn": [
+      "切换至特殊视角",
+      "锁定可用能力和知识",
+      "禁止携带现实中不应有的信息",
+      "结束后仅把可残留的信息转入玩家可见层"
+    ]
+  },
+  "frontend_pages": [
+    {
+      "id": "start",
+      "name": "开始 / 载入",
+      "features": [
+        "新游戏",
+        "读取存档",
+        "选择内容包",
+        "导入/导出JSON"
+      ]
+    },
+    {
+      "id": "character_sheet",
+      "name": "角色卡",
+      "features": [
+        "核心数值",
+        "身体状态",
+        "复苏度",
+        "意识锚点",
+        "驾驭灵异",
+        "持有物品",
+        "已知关系",
+        "隐藏字段仅GM可见"
+      ]
+    },
+    {
+      "id": "play",
+      "name": "跑团主界面",
+      "features": [
+        "剧情文本",
+        "玩家行动输入",
+        "建议行动按钮",
+        "骰子结果",
+        "当前地点",
+        "状态变化提示"
+      ]
+    },
+    {
+      "id": "clue_board",
+      "name": "线索板",
+      "features": [
+        "已确认规律",
+        "疑似规律",
+        "错误推断",
+        "NPC信息",
+        "物品效果",
+        "地点异常"
+      ]
+    },
+    {
+      "id": "event_monitor",
+      "name": "事件监控",
+      "features": [
+        "事件危害等级",
+        "事件失控度",
+        "封锁状态",
+        "已知媒介",
+        "倒计时",
+        "场外扩散提示"
+      ]
+    },
+    {
+      "id": "gm_panel",
+      "name": "GM面板",
+      "features": [
+        "隐藏真相",
+        "暗骰记录",
+        "NPC隐藏动机",
+        "事件时钟",
+        "揭示条件",
+        "强制修正AI输出"
+      ],
+      "access": "developer_or_gm_only"
+    },
+    {
+      "id": "content_pack_editor",
+      "name": "内容包编辑器",
+      "features": [
+        "新增NPC",
+        "新增厉鬼",
+        "新增灵异物品",
+        "新增事件",
+        "新增地点",
+        "JSON校验",
+        "可见/隐藏信息分层"
+      ]
+    }
+  ],
+  "ai_prompt_architecture": {
+    "system_prompt_blocks": [
+      {
+        "id": "world_rules",
+        "purpose": "写入底层硬规则，如规律优先、厉鬼不可杀死、黄金隔绝、复苏代价。"
+      },
+      {
+        "id": "current_visible_state",
+        "purpose": "仅提供玩家当前可见信息。"
+      },
+      {
+        "id": "gm_hidden_state",
+        "purpose": "提供隐藏真相，但明确禁止直接输出，除非满足揭示条件。"
+      },
+      {
+        "id": "resolution_result",
+        "purpose": "提供规则引擎已经完成的骰子结果、行动结果和代价结算。"
+      },
+      {
+        "id": "narration_style",
+        "purpose": "控制文本风格：冷峻、克制、规则导向、恐怖但不夸张。"
+      },
+      {
+        "id": "output_contract",
+        "purpose": "规定AI输出格式：场景结果、状态变化、获得线索、可选行动。"
+      }
+    ],
+    "output_format": {
+      "scene_result": "string",
+      "state_changes": [
+        "string"
+      ],
+      "new_clues": [
+        "string"
+      ],
+      "visible_risks": [
+        "string"
+      ],
+      "available_actions": [
+        "string"
+      ],
+      "gm_notes_hidden": "string"
+    },
+    "forbidden_ai_behaviors": [
+      "提前剧透隐藏真相",
+      "把灵异事件写成普通战斗",
+      "让骰子否定必死规律",
+      "让玩家无代价使用灵异",
+      "无条件给出正确答案",
+      "忽略事件时钟",
+      "忽略复苏度、身体、意识锚点变化",
+      "把危害等级当成源头强度"
+    ]
+  },
+  "save_data_schema": {
+    "save_id": "string",
+    "created_at": "string",
+    "updated_at": "string",
+    "current_stage_id": "string",
+    "player_character": "character_schema",
+    "visible_context": "object",
+    "hidden_context": "object",
+    "active_events": [
+      "event_schema"
+    ],
+    "known_characters": [
+      "character_schema"
+    ],
+    "known_locations": [
+      "location_schema"
+    ],
+    "inventory": [
+      "item_schema"
+    ],
+    "knowledge_log": [
+      "object"
+    ],
+    "dice_log": [
+      "object"
+    ],
+    "turn_log": [
+      "object"
+    ]
+  },
+  "content_pack_format": {
+    "pack_id": "string",
+    "pack_name": "string",
+    "version": "string",
+    "description": "string",
+    "characters": [
+      "character_schema"
+    ],
+    "powers": [
+      "power_schema"
+    ],
+    "items": [
+      "item_schema"
+    ],
+    "events": [
+      "event_schema"
+    ],
+    "locations": [
+      "location_schema"
+    ],
+    "organizations": [
+      "organization_schema"
+    ],
+    "plot_hooks": [
+      "object"
+    ],
+    "reveal_conditions": [
+      "object"
+    ],
+    "validation_rules": [
+      "string"
+    ]
+  },
+  "development_tasks": [
+    {
+      "phase": "P0",
+      "name": "项目骨架",
+      "tasks": [
+        "建立前端项目",
+        "建立基础路由",
+        "建立JSON导入导出",
+        "建立本地存档",
+        "建立基础状态管理"
+      ],
+      "acceptance": [
+        "可以创建新游戏",
+        "可以导入内容包JSON",
+        "可以保存与读取存档"
+      ]
+    },
+    {
+      "phase": "P1",
+      "name": "数据模型与内容包",
+      "tasks": [
+        "实现角色、灵异、物品、事件、地点、组织schema",
+        "实现schema校验",
+        "实现玩家可见层与GM隐藏层分离",
+        "实现内容包加载器"
+      ],
+      "acceptance": [
+        "错误JSON能被提示具体字段问题",
+        "隐藏字段不会出现在玩家界面",
+        "内容包可以独立加载"
+      ]
+    },
+    {
+      "phase": "P2",
+      "name": "D100判定引擎",
+      "tasks": [
+        "实现D100明骰",
+        "实现D100暗骰",
+        "实现目标值计算框架",
+        "实现结果margin等级",
+        "实现骰子日志"
+      ],
+      "acceptance": [
+        "每次判定记录目标值、骰子、margin、结果等级",
+        "明骰显示给玩家",
+        "暗骰只进入GM日志"
+      ]
+    },
+    {
+      "phase": "P3",
+      "name": "灵异规则引擎",
+      "tasks": [
+        "实现规律触发检查",
+        "实现机制标签匹配",
+        "实现灵异强度阶位修正",
+        "实现叠加机制",
+        "实现代价结算"
+      ],
+      "acceptance": [
+        "机制不匹配时不能直接成功",
+        "使用灵异必然结算代价",
+        "叠加不使用线性乘法"
+      ]
+    },
+    {
+      "phase": "P4",
+      "name": "事件时钟与危害模型",
+      "tasks": [
+        "实现事件失控度",
+        "实现危害等级动态变化",
+        "实现封锁状态",
+        "实现扩散因素",
+        "实现源头强度与事件危害分离"
+      ],
+      "acceptance": [
+        "高强度低危害事件可被表达",
+        "低强度高危害事件可被表达",
+        "错误行动可推动事件升级"
+      ]
+    },
+    {
+      "phase": "P5",
+      "name": "AI GM叙事层",
+      "tasks": [
+        "组装AI提示词",
+        "限制AI只输出玩家可见信息",
+        "根据规则引擎结果生成叙事",
+        "生成状态变化、线索、风险、可选行动",
+        "提供GM隐藏日志"
+      ],
+      "acceptance": [
+        "AI不会提前剧透隐藏字段",
+        "AI不会用剧情强行覆盖规则判定",
+        "AI输出包含结果、代价、线索、下一步选择"
+      ]
+    },
+    {
+      "phase": "P6",
+      "name": "前端体验完善",
+      "tasks": [
+        "实现角色卡页面",
+        "实现主游玩页面",
+        "实现线索板",
+        "实现事件监控",
+        "实现GM面板",
+        "实现内容包编辑器"
+      ],
+      "acceptance": [
+        "玩家能清晰看到自身状态",
+        "玩家能查看已知线索",
+        "GM能查看隐藏信息和暗骰",
+        "内容包可以在界面中编辑"
+      ]
+    }
+  ],
+  "testing_scenarios_without_specific_plot": [
+    {
+      "id": "high_strength_low_hazard",
+      "description": "测试一个源头灵异强度很高但固定不动、杀人条件苛刻、可封锁的事件，确保系统能评为低危害。"
+    },
+    {
+      "id": "low_strength_high_hazard",
+      "description": "测试一个源头灵异强度不高但可通过媒介快速扩散、无法封锁的事件，确保系统能动态升级危害等级。"
+    },
+    {
+      "id": "mechanism_mismatch",
+      "description": "测试玩家用高强度但机制不匹配的能力处理事件，确保不能直接成功，只能拖延或付出代价。"
+    },
+    {
+      "id": "containment_false_source",
+      "description": "测试玩家关押了媒介而非源头，确保事件没有真正解决并可能转移或升级。"
+    },
+    {
+      "id": "hidden_truth_protection",
+      "description": "测试GM隐藏字段不会被AI提前输出，只有满足揭示条件后才转入玩家可见信息。"
+    },
+    {
+      "id": "stacking_non_linear",
+      "description": "测试灵异叠加不会线性乘法爆炸，而是按叠加效率、条件和代价提升实战压制力。"
+    }
+  ],
+  "minimum_viable_product": {
+    "must_have": [
+      "新游戏与存档",
+      "角色卡",
+      "D100明骰/暗骰",
+      "行动输入与AI GM响应",
+      "玩家可见/GM隐藏信息分离",
+      "基础灵异规则判定",
+      "事件失控度",
+      "线索板",
+      "JSON内容包导入"
+    ],
+    "nice_to_have": [
+      "内容包编辑器",
+      "可视化事件时钟",
+      "NPC关系网",
+      "自动生成事件报告",
+      "多存档管理",
+      "可配置强度阶位表",
+      "战报导出Markdown"
+    ]
+  },
+  "final_acceptance_criteria": [
+    "系统能以跑团回合方式运行，不是普通聊天故事生成器。",
+    "系统能用D100处理行动判定，并记录骰子日志。",
+    "系统能区分灵异规律、机制匹配、灵异强度、危害等级和叠加机制。",
+    "系统能表达高强度低危害与低强度高危害两类事件。",
+    "系统能保证玩家可见信息与GM隐藏信息分离，避免提前剧透。",
+    "系统能让玩家通过行动获得线索，并让线索影响后续判定。",
+    "系统能结算复苏度、身体、意识锚点和事件失控度变化。",
+    "系统支持后续通过JSON内容包扩展角色、厉鬼、物品、地点、组织和事件。"
+  ]
+}

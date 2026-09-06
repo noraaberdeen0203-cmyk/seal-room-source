@@ -1,0 +1,107 @@
+{
+  "document_type": "seal_room_p3b24_fix2_restart_trust_boundary_audit",
+  "project_name": "隔绝室",
+  "project_version": "0.1.2-P3-B2.4-fix2-restart-trust-boundary",
+  "audit_generated_at": "2026-09-06T21:32:00+08:00",
+  "audit_mode": "read_only",
+  "overall_verdict": {
+    "status": "pass",
+    "summary": "external_single_target_exception 与 can_rewind_own_source_revival 只从 Power.restart_profile / canonical_restart_profile 读取。Action/AI 同名字段被忽略。PlanEvaluator 只输出 claimed_*。Action 不改 Power 权限。save/load 保持 canonical。错误尝试可见层不泄露 hidden flag。RB01-RB10 与 RF/RA/RR/RT/DH 回归 153 通过。P3-B2.4 建议冻结。",
+    "score": 0.93
+  },
+  "source_of_truth": {
+    "documents_found": ["attachments/seal_room_p3b24_fix2_restart_trust_boundary_spec.json"],
+    "latest_rules_used": true
+  },
+  "repository_inspection": {
+    "changed_modules": ["src/lib/engine/restart-engine.ts", "src/lib/engine/rare-actions.ts", "src/lib/engine/plan-evaluator.ts", "src/lib/engine/types.ts"],
+    "tests_failed": [],
+    "totals": "153 passed / 0 failed",
+    "typecheck": "clean"
+  },
+  "corrections_review": {
+    "canonical_only": {
+      "status": "done",
+      "expected_behavior": "两权限只读 Power.restart_profile。",
+      "actual_behavior": "readCanonicalRestartProfile；请求字段忽略。",
+      "evidence": [{"file": "src/lib/engine/restart-engine.ts", "symbol": "readCanonicalRestartProfile", "detail": "=== true only from power"}],
+      "test_evidence": ["RB01", "RB03", "RB04", "RB06"],
+      "deviation": false,
+      "notes": ""
+    },
+    "claims_ignored": {
+      "status": "done",
+      "expected_behavior": "Action/AI 伪造不能提升权限。",
+      "actual_behavior": "evaluateRestartRequest 使用 profile 非 req flags。",
+      "evidence": [{"file": "src/lib/engine/restart-engine.ts", "symbol": "evaluateRestartRequest", "detail": "authority_claim_ignored"}],
+      "test_evidence": ["RB01", "RB02", "RB05", "RB09"],
+      "deviation": false,
+      "notes": ""
+    },
+    "plan_evaluator": {
+      "status": "done",
+      "expected_behavior": "只输出 claimed intent。",
+      "actual_behavior": "parseRestartIntent 返回 claimed_*。",
+      "evidence": [{"file": "src/lib/engine/plan-evaluator.ts", "symbol": "parseRestartIntent", "detail": "no fact flags"}],
+      "test_evidence": ["RB02", "RB05"],
+      "deviation": false,
+      "notes": ""
+    },
+    "immutability": {
+      "status": "done",
+      "expected_behavior": "Action 不改 profile；save/load 不提升。",
+      "actual_behavior": "resolveAction 后 profile JSON 不变。",
+      "evidence": [{"file": "src/lib/engine/rare-actions.ts", "symbol": "resolveRestartFromSave", "detail": "read only"}],
+      "test_evidence": ["RB07", "RB08"],
+      "deviation": false,
+      "notes": ""
+    },
+    "hidden": {
+      "status": "done",
+      "expected_behavior": "可见层不泄露 flag 名。",
+      "actual_behavior": "泛化文案；hidden 仅 route/reason。",
+      "evidence": [{"file": "src/lib/engine/rare-actions.ts", "symbol": "visible", "detail": "无法以你预想的方式只落在目标身上"}],
+      "test_evidence": ["RB10"],
+      "deviation": false,
+      "notes": ""
+    }
+  },
+  "behavioral_tests": [
+    {"id": "RB01", "status": "pass"},
+    {"id": "RB02", "status": "pass"},
+    {"id": "RB03", "status": "pass"},
+    {"id": "RB04", "status": "pass"},
+    {"id": "RB05", "status": "pass"},
+    {"id": "RB06", "status": "pass"},
+    {"id": "RB07", "status": "pass", "pipeline": "resolveAction"},
+    {"id": "RB08", "status": "pass", "pipeline": "resolveAction"},
+    {"id": "RB09", "status": "pass"},
+    {"id": "RB10", "status": "pass", "pipeline": "resolveAction"}
+  ],
+  "regression_tests": {
+    "RF01_RF14": "pass",
+    "RA_RR_RT_DH": "pass"
+  },
+  "deviations": [],
+  "implementation_ambiguities": [
+    "RB10 检查的是 hard_block_reason/rare_notes/available_actions，未断言整份 ResolutionResult.gm_notes_hidden。"
+  ],
+  "technical_debt": [
+    "RareActionPayload 仍允许携带 forbidden 字段以便测试伪造，运行时忽略。"
+  ],
+  "architecture_drift": {"detected": false, "items": ["6800/1500/2200/3000 未改"]},
+  "freeze_status": {
+    "p3_b24_restart_targeting": "freeze",
+    "p3_b24_self_exclusion": "freeze",
+    "p3_b24_external_restart": "freeze",
+    "p3_b24_action_routing": "freeze",
+    "p3_b24_unified_revival": "freeze",
+    "p3_b24_transaction_persistence": "freeze",
+    "p3_b24_trust_boundary": "freeze",
+    "next_stage": "P3-B3 RevivalEndpointEngine"
+  },
+  "next_required_work": [
+    {"priority": "P3", "title": "RevivalEndpointEngine", "reason": "spec next_stage", "blocking": false}
+  ],
+  "final_assessment": "P3-B2.4 Fix2 信任边界已落地：特殊重启权限只来自 canonical Power。建议冻结 P3-B2.4 整层。"
+}

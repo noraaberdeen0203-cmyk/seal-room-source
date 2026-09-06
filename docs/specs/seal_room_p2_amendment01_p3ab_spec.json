@@ -1,0 +1,308 @@
+{
+  "document_type": "seal_room_p2_amendment_01_p3_time_spec",
+  "project_name": "隔绝室",
+  "project_name_en": "Seal Room",
+  "target_version": "0.1.2-P2-amendment-01_P3-A-B",
+  "language": "zh-CN",
+  "purpose": "在已冻结P2基础规则上做一次窄范围修订，并同步定义P3自然复苏的长期日历结算规则。只修正驾驭对抗口径、关押厉鬼冻结逻辑、驾驭后的current连续性与长期自然复苏倍率，不重新打开其他P2模块。",
+  "source_of_truth_priority": [
+    "本文件",
+    "seal_room_v0_1_2_p2_final_correction_spec.json",
+    "seal_room_v0_1_2_p2_correction_spec.json",
+    "seal_room_v0_1_1_p2_addendum.json",
+    "supernatural_trpg_simulator_architecture_task.json"
+  ],
+  "frozen_p2_do_not_change": [
+    "每只厉鬼仍为独立GhostEntity",
+    "关押仍先确认真实源头，再做现实/窗口/机制/强度硬门",
+    "关押成功条件仍为己方containment_effective_strength严格大于source.current_strength",
+    "D100仍不能越过关押硬门",
+    "具体厉鬼KillingRule仍以GhostEntity为唯一运行真源",
+    "普通驾驭与强行驾驭仍必须由玩家显式区分",
+    "simultaneous_supernatural_collision继续作为多鬼共同作用宿主的核心结算",
+    "StackingEngine继续作为特殊1×2叠加唯一引擎",
+    "死机复苏压制仍采用deadlocked.current_strength > related_others.current_strength_sum",
+    "相等时死机压制失效",
+    "AI/玩家可见层与GM hidden层继续硬隔离"
+  ],
+  "amendment": {
+    "A01_driving_eligibility_use_current_strength": {
+      "priority": "P0",
+      "supersedes": "此前普通驾驭资格使用max_strength或max-equivalent的规则",
+      "reason": "允许弱鬼驭鬼者利用关押时机、低活跃窗口或特殊状态驾驭上限远高于自身的强鬼。",
+      "required_behavior": {
+        "single_hosted_ghost": "比较hosted.current_strength与incoming.current_strength。",
+        "multi_ghost_host": "以现有体内灵异结构的current-equivalent opposition与incoming.current_strength比较。",
+        "stacking": "若现有体内灵异存在明确且当前生效的特殊叠加，可使用统一StackingEngine生成current-equivalent opposition。",
+        "max_strength_role": "max_strength不再作为普通驾驭资格硬门；它只表示完全复苏上限与未来失衡风险。",
+        "tier_rule": {
+          "gap_0": "正常进入平衡判定",
+          "gap_1": "允许尝试但风险提高",
+          "gap_2": "普通驾驭高危，除非存在明确机制/叠加/剧情条件，否则偏向anchor/conflict/failure",
+          "gap_3_plus": "普通驾驭原则上不可行；强行驾驭极高风险"
+        }
+      },
+      "must_not": [
+        "不得继续把max_strength作为普通驾驭硬门",
+        "不得把attack_strength作为长期驾驭资格主要比较值"
+      ]
+    },
+    "A02_contained_ghost_runtime_freeze": {
+      "priority": "P0",
+      "required_behavior": {
+        "when_contained": [
+          "current_strength冻结",
+          "ghost_activity冻结",
+          "attack_state冻结/清空为不可对外主动作用状态",
+          "killing_rule_stage冻结",
+          "killing_rule_target_progression冻结",
+          "autonomous_behavior暂停"
+        ],
+        "max_strength": "保持静态定义，不因关押变化。",
+        "time_skip": "被完整关押期间，无论剧情跳过多久，冻结字段都不得自然变化。",
+        "unfreeze_conditions": [
+          "成功驾驭",
+          "关押失效",
+          "容器破裂",
+          "厉鬼逃逸",
+          "未来P3明确判定为实质性灵异泄漏"
+        ],
+        "inventory": "contained_ghost仍可作为特殊物品栏引用，但不要新增复杂迁移状态机。"
+      }
+    },
+    "A03_driving_current_continuity": {
+      "priority": "P0",
+      "problem": "若新鬼关押时current较低，驾驭成功后不能立刻按全局awakening公式跳算到更高current，否则刚建立的平衡会自发失效。",
+      "required_behavior": {
+        "initial_current_after_success": "被关押厉鬼成功驾驭后，其冻结current_strength直接作为新宿主状态下的初始current_strength。",
+        "no_instant_jump": "驾驭成功当刻不得因加入宿主而把新鬼current直接重算为max_strength × global awakening_factor。",
+        "continuity": "驾驭前冻结current与驾驭成功后的初始current必须连续。",
+        "hosted_existing_ghosts": "既有非死机鬼可因整体新平衡与revival_degree变化而调整，但不得导致新鬼初始current瞬间跳变。"
+      }
+    },
+    "A04_per_ghost_awakening_anchor": {
+      "priority": "P0",
+      "required_behavior": {
+        "fields": [
+          "anchor_revival_degree",
+          "anchor_current_strength"
+        ],
+        "on_successful_driving": "为新驾驭鬼建立awakening anchor；anchor_revival_degree取驾驭成功后角色当前revival_degree，anchor_current_strength取该鬼冻结current_strength。",
+        "growth_rule": "当revival_degree高于anchor时，current_strength应从anchor_current单调向max_strength逼近。",
+        "full_revival": "revival_degree=100时current_strength必须=max_strength。",
+        "suggested_formula": "S(R)=S_anchor+(S_max-S_anchor)*(R-R_anchor)/(100-R_anchor), for R>=R_anchor",
+        "when_revival_below_anchor": "不得产生current高于anchor的反直觉结果；可保持anchor current或按新的平衡结算后重建anchor，不要求本轮实现复杂反向插值。",
+        "rebalance": "当再次成功驾驭新鬼形成整体新平衡时，可为所有非死机鬼重建awakening anchor，以保证新平衡后的current连续。",
+        "deadlock_exception": "死机鬼仍由自身状态机current_strength维护，不使用awakening anchor。"
+      }
+    },
+    "A05_max_strength_future_risk_only": {
+      "priority": "P1",
+      "required_behavior": {
+        "meaning": "max_strength继续表示厉鬼完整/完全复苏上限。",
+        "future_risk": "允许记录max_strength差距作为未来平衡风险参考，但本轮不要新增复杂future_risk百分比公式。",
+        "natural_emergence": "未来随着revival上升，各鬼current向各自max推进，强鬼会自然逐渐压过弱鬼，从而表现出未来失衡风险。"
+      }
+    }
+  },
+  "p3_natural_revival": {
+    "P3A_calendar_model": {
+      "priority": "P0",
+      "rule": "自然复苏只在剧情级长期时间跳跃时结算，不参与分钟/小时级场景Scheduler。",
+      "fields": [
+        "world_calendar",
+        "natural_revival_anchor_calendar"
+      ],
+      "short_scene_time": "调查、战斗、旅行、等待数小时等正常场景时间推进，不自动增加自然复苏。",
+      "long_time_skip": "只有剧情明确压缩处理的天/周/月级时间跳跃调用NaturalRevivalSettlement。"
+    },
+    "P3B_single_ghost_baseline": {
+      "priority": "P0",
+      "baseline": {
+        "single_ghost_multiplier": 1.0,
+        "natural_revival_per_30_days": 10
+      },
+      "formula": "natural_revival_delta = (calendar_delta_days / 30) * 10 * balance_multiplier"
+    },
+    "P3C_multi_ghost_balance_multiplier": {
+      "priority": "P0",
+      "rule": "多鬼驭鬼者仅在确实形成有效平衡时获得低于1的长期自然复苏倍率。",
+      "constraints": [
+        "0 < balance_multiplier < 1 对普通有效多鬼平衡",
+        "单鬼或无有效平衡时=1",
+        "真正revival deadlock时=0",
+        "多鬼数量本身不直接决定倍率"
+      ],
+      "suggested_tuning_table": {
+        "single_ghost_instability": 1.0,
+        "multi_puzzle_conflict": 1.0,
+        "partial_deadlock": 0.9,
+        "dual_ghost_deadlock": 0.8,
+        "stable_deadlock": 0.7,
+        "high_quality_balance": 0.55,
+        "revival_deadlock": 0.0
+      },
+      "note": "具体数值为调参建议，必须集中配置；核心硬规则是有效多鬼平衡必然<1，真正复苏死机=0。"
+    },
+    "P3D_deadlock_long_skip": {
+      "priority": "P0",
+      "rule": "若长剧情跳时内P2复苏死机条件持续成立，该时间段自然复苏为0且不追补。",
+      "segmented_skip": "若剧情明确知道某一日期死机解除，则只对解除后的时间段结算自然复苏；不要逐日模拟。"
+    },
+    "P3E_no_short_term_acceleration": {
+      "priority": "P0",
+      "forbidden": [
+        "revival_stress",
+        "使用厉鬼后的24小时自然复苏倍率",
+        "分钟/小时级natural_revival_accumulator",
+        "每5分钟自然复苏暗骰"
+      ],
+      "rule": "使用灵异产生的复苏变化继续由P2作为即时结果结算；P3不额外叠加短期自然复苏加速。"
+    }
+  },
+  "canonical_driving_flow_after_amendment": [
+    "普通路线要求目标已被成功关押",
+    "读取incoming冻结current_strength",
+    "读取体内现有灵异结构current-equivalent opposition",
+    "按current_strength位阶做驾驭资格判断",
+    "显式standard_drive或force_drive分流",
+    "进入simultaneous_supernatural_collision",
+    "若成功形成平衡，降低revival_degree",
+    "新鬼以冻结current作为初始current，不瞬间跳算",
+    "建立新鬼awakening anchor",
+    "必要时为既有非死机鬼重建新平衡anchor",
+    "重算player_current_strength",
+    "特殊叠加继续进入统一StackingEngine"
+  ],
+  "canonical_long_time_skip_flow": [
+    "确认这是剧情级long_time_skip，而不是活跃事件中的普通等待",
+    "计算world_calendar - natural_revival_anchor_calendar",
+    "读取当前balance_state",
+    "单鬼/无有效平衡 multiplier=1",
+    "有效多鬼平衡 multiplier<1",
+    "revival deadlock有效时间段 multiplier=0",
+    "计算一次性natural_revival_delta",
+    "调用P2更新revival_degree",
+    "根据各Ghost awakening anchor重算非死机鬼current",
+    "更新natural_revival_anchor_calendar=world_calendar"
+  ],
+  "required_tests": [
+    {
+      "id": "AM01",
+      "title": "弱鬼可在强鬼低current窗口尝试驾驭",
+      "setup": "hosted max=900,current=700；incoming max=2800,frozen current=650",
+      "expected": "普通驾驭资格按700 vs 650进入可判定区，而不是因900 vs 2800直接拒绝"
+    },
+    {
+      "id": "AM02",
+      "title": "attack接近但current差距大时不误判",
+      "expected": "资格基于current，不基于attack"
+    },
+    {
+      "id": "AM03",
+      "title": "关押期间数据冻结",
+      "setup": "contained ghost current=650，剧情跳过90天",
+      "expected": "仍为650，activity/rule stage不自然推进"
+    },
+    {
+      "id": "AM04",
+      "title": "驾驭成功current连续",
+      "setup": "incoming frozen current=650",
+      "expected": "驾驭成功当刻incoming current仍=650"
+    },
+    {
+      "id": "AM05",
+      "title": "awakening anchor向max推进",
+      "setup": "anchor R=30,S=650,max=2800；之后R=50",
+      "expected": "current>650且<2800；R=100时=2800"
+    },
+    {
+      "id": "AM06",
+      "title": "死机鬼不使用awakening anchor",
+      "expected": "deadlocked current仅由自身状态机决定"
+    },
+    {
+      "id": "P3T01",
+      "title": "单鬼30天自然复苏",
+      "expected": "+10"
+    },
+    {
+      "id": "P3T02",
+      "title": "单鬼90天自然复苏",
+      "expected": "+30"
+    },
+    {
+      "id": "P3T03",
+      "title": "多鬼平衡倍率小于1",
+      "setup": "stable_deadlock multiplier=0.7, skip30d",
+      "expected": "+7"
+    },
+    {
+      "id": "P3T04",
+      "title": "多鬼冲突不享受平衡减速",
+      "setup": "multi_puzzle_conflict, skip30d",
+      "expected": "+10"
+    },
+    {
+      "id": "P3T05",
+      "title": "复苏死机长期跳时",
+      "setup": "revival_deadlock持续60天",
+      "expected": "+0且不追补"
+    },
+    {
+      "id": "P3T06",
+      "title": "普通场景等待不结算自然复苏",
+      "setup": "等待6小时",
+      "expected": "natural revival不变化"
+    },
+    {
+      "id": "P3T07",
+      "title": "长跳后更新anchor calendar",
+      "expected": "下次跳时不重复计算旧时间段"
+    }
+  ],
+  "implementation_constraints": [
+    "本轮只做P2 Amendment 01与P3-A/B自然复苏基础",
+    "不修改已冻结的关押、KillingRule、hidden、D100硬规则",
+    "不新增短期复苏加速",
+    "不新增分钟/小时级自然复苏累计器",
+    "不新增复杂future_risk公式",
+    "不展开完整Scheduler/Hidden Roll/Event Clock/NPC Autonomy，本轮只预留接口",
+    "不新增复杂关押物迁移状态机"
+  ],
+  "post_implementation_audit": {
+    "required": true,
+    "mode": "read_only",
+    "output_file": "seal_room_p2_amendment01_p3ab_audit.json",
+    "must_stop_coding_before_audit": true,
+    "must_verify": [
+      "普通驾驭资格是否真正改为current_strength",
+      "max_strength是否只保留上限/未来风险语义",
+      "contained ghost是否真正冻结current/activity/rule progression",
+      "驾驭成功后新鬼current是否保持连续",
+      "awakening anchor是否能在revival=100时达到max",
+      "死机鬼是否绕过anchor逻辑",
+      "单鬼30天是否约+10",
+      "有效多鬼平衡倍率是否<1",
+      "multi_puzzle_conflict是否不享受减速",
+      "revival deadlock长跳是否=0且不追补",
+      "6小时等待是否不会触发自然复苏",
+      "是否误加入短期revival stress/小时级累计器"
+    ],
+    "minimum_sections": [
+      "overall_verdict",
+      "source_of_truth",
+      "repository_inspection",
+      "p2_amendment_review",
+      "p3_natural_revival_review",
+      "behavioral_tests",
+      "deviations",
+      "implementation_ambiguities",
+      "technical_debt",
+      "architecture_drift",
+      "freeze_status",
+      "next_required_work",
+      "final_assessment"
+    ]
+  }
+}

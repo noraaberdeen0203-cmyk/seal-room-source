@@ -1,0 +1,339 @@
+{
+  "document_type": "seal_room_rare_supernatural_tags_spec",
+  "project_name": "隔绝室",
+  "target_version": "0.1.2-P3-B2.2-rare-tags",
+  "language": "zh-CN",
+  "purpose": "新增七类稀有高位灵异词条及其强度资格、当前表现、组合机制、必死抗性、异类交互、范围重启硬门，并接入现有StackingEngine、死机/异类Gate与统一灵异位阶。",
+  "source_of_truth_priority": [
+    "本文件",
+    "seal_room_p3b2_deadlock_heteromorph_spec.json",
+    "seal_room_p3ab_fix1_spec.json",
+    "seal_room_p2_amendment01_p3ab_spec.json"
+  ],
+  "global_principles": {
+    "eligibility": "max_strength决定SupernaturalPower是否有资格拥有稀有词条。",
+    "current_performance": "current_strength决定词条当前发挥规模、持续、目标数、对抗能力与完成度。",
+    "mechanism_first": "标签只表示机制类别，不能替代具体mechanism。",
+    "dice_limit": "AI和D100不能绕过最低max、复合机制门或强度硬门。",
+    "scope": "稀有词条挂在SupernaturalPower上；GhostEntity仅聚合summary，不得跨Power自动混用。",
+    "player_created_power_default_cap": 3,
+    "exception_rule": "玩家自创单Power超过3个稀有词条必须进入exception_review，并仍需通过max_strength与mechanism coherence。"
+  },
+  "rare_tag_tiers": {
+    "tier_1": {
+      "min_max_strength": 1500,
+      "tags": [
+        "必死",
+        "压制",
+        "诅咒"
+      ]
+    },
+    "tier_2": {
+      "min_max_strength": 2200,
+      "tags": [
+        "鬼域",
+        "意识"
+      ],
+      "note": "意识与鬼域同档起步，但能力上下限跨度很大。"
+    },
+    "tier_3": {
+      "min_max_strength": 3000,
+      "tags": [
+        "唯心",
+        "重启"
+      ]
+    }
+  },
+  "tags": {
+    "必死": {
+      "id": "lethal",
+      "min_max_strength": 1500,
+      "definition": "满足明确规则后获得即死结算资格；不是所有KillingRule都自动拥有必死。",
+      "normal_target": {
+        "tier_resistance": "若目标灵异位阶比该次必死袭击有效位阶高至少3阶，则免疫即死终点。",
+        "still_resolve": [
+          "身体损伤",
+          "灵异侵蚀",
+          "击退/异常",
+          "具体mechanism的非即死后果"
+        ],
+        "no_hp_system": true
+      },
+      "heteromorph": {
+        "pure_lethal_same_or_lower": "异类无普通血条/活人死亡终点，忽略纯生命终结型必死。",
+        "non_consciousness_gap_2_plus": "若非意识型必死袭击有效位阶高于异类至少2阶，则异类temporary_supernatural_incapacitation，不死亡。",
+        "gap_1": "不触发完整失能；可结算更强结构冲击/僵直/灵异扰动。",
+        "consciousness_lethal": "若必死同时具备意识机制，进入ConsciousnessAttackGate，可攻击异类的人类记忆/意识核心。"
+      }
+    },
+    "压制": {
+      "id": "suppression",
+      "min_max_strength": 1500,
+      "definition": "灵异对抗中获得机制性额外优势，成功后封锁敌对目标部分或全部灵异力量。",
+      "scope_options": [
+        "one_power",
+        "one_killing_rule",
+        "one_tag",
+        "whole_ghost"
+      ],
+      "duration_options": [
+        "timed",
+        "while_contact_maintained",
+        "while_suppression_maintained",
+        "until_strength_break",
+        "until_rule_condition"
+      ],
+      "important": "不得简化为固定strength加成，必须先确认suppression mechanism applies。"
+    },
+    "诅咒": {
+      "id": "curse",
+      "min_max_strength": 1500,
+      "definition": "通过媒介在源头与目标之间建立持续灵异联系。",
+      "medium_required": true,
+      "medium_examples": [
+        "物质",
+        "照片/影像",
+        "声音",
+        "名字",
+        "记忆",
+        "梦",
+        "动作",
+        "物品",
+        "地点",
+        "仪式",
+        "关系"
+      ],
+      "borrowed_power": "可使未驾驭源头厉鬼的人被动承载或主动借用部分灵异效果；这不等于驾驭。"
+    },
+    "鬼域": {
+      "id": "ghost_domain",
+      "min_max_strength": 2200,
+      "definition": "形成围绕厉鬼规则运行的局部异常空间。",
+      "current_binding": "强绑定current_strength。",
+      "effective_strength": "domain_effective_strength以current_strength为主，可乘小幅domain_mechanism_factor；不得直接取max_strength。",
+      "growth_dimensions": [
+        "range",
+        "stability",
+        "isolation",
+        "mobility",
+        "reality_distortion",
+        "resistance_to_intrusion"
+      ],
+      "no_global_layer_table": true
+    },
+    "意识": {
+      "id": "consciousness",
+      "min_max_strength": 2200,
+      "definition": "直接作用memory/consciousness。",
+      "max_role": "max_strength决定最终意识干涉深度上限。",
+      "current_role": "current_strength决定当前完成度与稳定性。",
+      "range_examples": {
+        "low": [
+          "读取碎片记忆",
+          "短暂遗忘",
+          "认知偏差"
+        ],
+        "mid": [
+          "篡改单段记忆",
+          "植入虚假经历",
+          "复制人格片段"
+        ],
+        "high": [
+          "完整记忆复制",
+          "人格覆盖",
+          "意识转移",
+          "人格替换"
+        ],
+        "extreme": [
+          "窃取完整人生记忆",
+          "稳定智慧",
+          "鬼驭人",
+          "攻击异类的人类意识核心"
+        ]
+      },
+      "ghost_controls_human": "鬼驭人是GhostState/衍生结果，不是意识tag本身。"
+    },
+    "唯心": {
+      "id": "idealistic",
+      "min_max_strength": 3000,
+      "definition": "真正源头不处于通常现实接触层，现实活动者为衍生灵异/投影/媒介表现。",
+      "containment_override": "必须先确认媒介并通过正确机制建立Source Contact，之后才能进入接触-对抗-关押。",
+      "strength_cannot_skip_source_contact": true
+    },
+    "重启": {
+      "id": "restart",
+      "min_max_strength": 3000,
+      "definition": "将自身、单一目标或区域状态回退至过去节点。",
+      "scope_options": [
+        "self",
+        "single_target",
+        "area"
+      ],
+      "required_fields": [
+        "restart_scope",
+        "lookback_window",
+        "restart_domains"
+      ],
+      "single_restart": {
+        "requires_ghost_domain": false
+      },
+      "area_restart": {
+        "relation": "范围重启 >> 单体重启",
+        "requires_restart": true,
+        "requires_ghost_domain": true,
+        "effective_strength_threshold": 6800,
+        "hard_rule": "必须由同一有效复合机制中的鬼域+重启达到effective_area_restart_strength >= 6800。"
+      }
+    }
+  },
+  "area_restart_gate": {
+    "name": "AreaRestartGate",
+    "hard_requirements": [
+      "具备重启",
+      "具备鬼域",
+      "鬼域当前可运行",
+      "effective_area_restart_strength >= 6800"
+    ],
+    "effective_strength_components": [
+      "domain current component",
+      "restart current component",
+      "mechanism-matched stacking",
+      "applicable temporary supernatural amplifiers"
+    ],
+    "stacking": "必须复用统一StackingEngine并验证mechanism_match；禁止无关灵异原始数值直接相加。",
+    "temporary_amplifier": {
+      "allowed": true,
+      "rule": "若合法灵异物品/Power能作用于鬼域+重启复合机制，可临时把有效强度推到6800以上。",
+      "cost": "若依赖临时增幅跨过6800，使用后必须立即大幅增加revival_degree。",
+      "cost_type": "P2即时复苏代价",
+      "forbidden": [
+        "revival_stress",
+        "24小时复苏加速",
+        "小时级自然复苏倍率"
+      ]
+    },
+    "conflict_priority": "默认area_restart >> single_target_restart >= self_restart；具体mechanism可覆盖该默认。"
+  },
+  "strength_tier_rules": {
+    "reuse_existing_engine": true,
+    "rule": "必死抗性与异类失能必须复用现有StrengthTierEngine/tierGap，不得在lethal模块另建第二套位阶。",
+    "normal_lethal": "defender_tier >= attack_tier + 3 => negate lethal endpoint, still resolve nonlethal consequences.",
+    "heteromorph": {
+      "pure_lethal_same_or_lower": "ignore lethal endpoint",
+      "non_consciousness_gap_2_plus": "temporary incapacitation",
+      "consciousness_lethal": "route to ConsciousnessAttackGate"
+    }
+  },
+  "p3b2_integration": {
+    "deadlock": "稀有tag只用于候选检索，DeadlockLogicGate仍必须验证真实mechanism冲突。",
+    "heteromorph": "意识/重启/唯心/诅咒只作为意识保护候选，必须继续检查具体consciousness protection mechanism。",
+    "valid_protect_list": "若现有HeteromorphLogicGate依赖固定VALID_PROTECT名单，应改为结构化能力属性/机制审查，tag只负责候选发现。"
+  },
+  "required_tests": [
+    {
+      "id": "RT01",
+      "setup": "max=1400 + 必死",
+      "expected": "reject"
+    },
+    {
+      "id": "RT02",
+      "setup": "max=1500 + 必死",
+      "expected": "tag资格通过"
+    },
+    {
+      "id": "RT03",
+      "setup": "max=2100 + 鬼域",
+      "expected": "reject"
+    },
+    {
+      "id": "RT04",
+      "setup": "max=2200 + 意识",
+      "expected": "允许低端意识能力"
+    },
+    {
+      "id": "RT05",
+      "setup": "max=2900 + 重启",
+      "expected": "reject"
+    },
+    {
+      "id": "RT06",
+      "setup": "高max低current鬼域",
+      "expected": "domain按current表现，不得按max"
+    },
+    {
+      "id": "RT07",
+      "setup": "鬼域+重启 effective=6799",
+      "expected": "范围重启不可用"
+    },
+    {
+      "id": "RT08",
+      "setup": "鬼域+重启 effective=6800",
+      "expected": "范围重启硬门通过"
+    },
+    {
+      "id": "RT09",
+      "setup": "native=6200，合法临时增幅至6900",
+      "expected": "允许范围重启尝试，完成后立即大幅增加revival"
+    },
+    {
+      "id": "RT10",
+      "setup": "无关Power数值相加到7000",
+      "expected": "mechanism mismatch，范围重启失败"
+    },
+    {
+      "id": "RT11",
+      "setup": "目标比必死攻击高3阶",
+      "expected": "免疫即死，其他后果继续"
+    },
+    {
+      "id": "RT12",
+      "setup": "同强度纯必死 vs heteromorph",
+      "expected": "忽略普通死亡终点"
+    },
+    {
+      "id": "RT13",
+      "setup": "非意识必死攻击高heteromorph2阶",
+      "expected": "temporary incapacitation，不死亡"
+    },
+    {
+      "id": "RT14",
+      "setup": "必死+意识 vs heteromorph",
+      "expected": "进入ConsciousnessAttackGate"
+    },
+    {
+      "id": "RT15",
+      "setup": "意识tag只有读取功能",
+      "expected": "不能自动作为异类意识保护"
+    },
+    {
+      "id": "RT16",
+      "setup": "单体重启无鬼域",
+      "expected": "允许，只要重启资格与mechanism成立"
+    },
+    {
+      "id": "RT17",
+      "setup": "玩家单Power 4个稀有tag",
+      "expected": "exception_review"
+    },
+    {
+      "id": "RT18",
+      "setup": "Ghost两个Power各2tag",
+      "expected": "summary可显示4类，但不得跨Power自动混用"
+    }
+  ],
+  "regression_requirements": [
+    "驾驭仍使用current_strength",
+    "contained ghost冻结不变",
+    "自然复苏仍只在long_time_skip",
+    "临时增幅只支付P2即时revival代价，不引入短期复苏加速",
+    "异类仍必须死机+意识保护",
+    "D100不能突破mechanism/strength硬门",
+    "hidden/player-visible隔离不回退"
+  ],
+  "post_implementation_audit": {
+    "required": true,
+    "mode": "read_only",
+    "output_file": "seal_room_rare_supernatural_tags_audit.json",
+    "must_stop_coding_before_audit": true
+  }
+}

@@ -1,0 +1,211 @@
+{
+  "document_type": "seal_room_p3b24_fix2_restart_trust_boundary_spec",
+  "project_name": "隔绝室",
+  "project_name_en": "Seal Room",
+  "target_version": "0.1.2-P3-B2.4-fix2-restart-trust-boundary",
+  "language": "zh-CN",
+  "purpose": "修复P3-B2.4 Fix1中重启特殊权限可能由action/AI调用方注入的问题。把external_single_target_exception与can_rewind_own_source_revival锁定为Power/GM hidden事实字段，玩家输入、ActionRequest、PlanEvaluator和AI只能声明意图，不能赋予权限。完成后冻结P3-B2.4整层。",
+  "source_of_truth_priority": [
+    "本文件",
+    "seal_room_p3b24_fix1_restart_semantics_spec.json",
+    "seal_room_p3b24_rare_action_integration_spec.json",
+    "seal_room_p3b23_rare_tag_runtime_spec.json",
+    "seal_room_rare_supernatural_tags_spec.json",
+    "seal_room_p3b2_deadlock_heteromorph_spec.json"
+  ],
+  "frozen_do_not_reopen": [
+    "普通self restart无需鬼域/6800",
+    "外部目标默认进入AreaRestartGate",
+    "范围重启【鬼域+重启+effective>=6800】",
+    "高位鬼域=当前有效鬼域强度>=6800",
+    "source自身revival_state默认不能被自身重启刷新",
+    "独立外部重启源可回退目标revival_state",
+    "两个独立范围重启可逐次互刷",
+    "memory/consciousness/causal restart当前unsupported",
+    "所有即时复苏统一applyRevivalDelta",
+    "transaction cost去重可跨save/load",
+    "1500/2200/3000/6800数字不变"
+  ],
+  "trust_boundary": {
+    "principle": "玩家声明、AI解析结果、ActionRequest都是untrusted claims；Power定义与GM hidden mechanism是规则事实。",
+    "untrusted_sources": [
+      "player natural-language input",
+      "UI form values",
+      "ActionRequest payload",
+      "PlanEvaluator parsed plan",
+      "AI/LLM structured output",
+      "client-provided rare fields"
+    ],
+    "trusted_sources": [
+      "SupernaturalPower.restart_profile",
+      "GM hidden mechanism definition",
+      "server-side/save-backed canonical Power data"
+    ],
+    "hard_rule": "任何特殊重启权限只能从trusted source读取；untrusted source同名字段必须忽略、剥离或拒绝，绝不能覆盖canonical Power profile。"
+  },
+  "restart_profile": {
+    "canonical_location": "SupernaturalPower.restart_profile",
+    "fields": {
+      "external_single_target_exception": {
+        "type": "boolean",
+        "default": false,
+        "meaning": "允许该Power在不走普通AreaRestartGate的情况下把重启投射到单一外部目标。",
+        "authority": "Power/GM hidden only"
+      },
+      "can_rewind_own_source_revival": {
+        "type": "boolean",
+        "default": false,
+        "meaning": "允许该Power突破source self-exclusion，回退自身作为重启源承担的revival_state。",
+        "authority": "Power/GM hidden only"
+      }
+    }
+  },
+  "action_request_policy": {
+    "allowed_claim_fields": [
+      "source_power_id",
+      "target_id",
+      "claimed_scope",
+      "claimed_restart_domains",
+      "claimed_intent",
+      "claimed_medium_or_method"
+    ],
+    "forbidden_authority_fields": [
+      "external_single_target_exception",
+      "can_rewind_own_source_revival",
+      "bypass_area_restart_gate",
+      "ignore_source_self_exclusion"
+    ],
+    "behavior": "若请求中出现forbidden authority fields，应忽略其值或返回invalid_authority_claim；不能写入Power profile。"
+  },
+  "plan_evaluator_policy": {
+    "role": "AI/PlanEvaluator只结构化玩家意图。",
+    "may_output": [
+      "claimed_external_single_target",
+      "claimed_restart_domains",
+      "claimed_self_revival_rewind"
+    ],
+    "must_not_output_as_fact": [
+      "external_single_target_exception=true",
+      "can_rewind_own_source_revival=true",
+      "restart_success=true"
+    ],
+    "resolution": "规则引擎根据source_power_id读取canonical restart_profile，再决定真实路由。"
+  },
+  "routing_rules": {
+    "external_single": [
+      "读取Action中的source_power_id与target_id",
+      "从canonical Power读取restart_profile.external_single_target_exception",
+      "若target!=self且canonical flag=false => AreaRestartGate",
+      "若target!=self且canonical flag=true => exceptional_external_single path"
+    ],
+    "self_revival": [
+      "从canonical Power读取restart_profile.can_rewind_own_source_revival",
+      "若false => filterRestartDomains剔除source owner的revival_state",
+      "若true => 才允许具体mechanism继续判定自身revival_state回退"
+    ]
+  },
+  "security_and_integrity": {
+    "no_runtime_mutation_from_action": "Action执行不得修改restart_profile权限字段。",
+    "save_integrity": "save/load必须保留canonical restart_profile，不从action历史反向重建权限。",
+    "hidden_integrity": "GM hidden特殊权限不能因为玩家尝试而暴露；错误尝试只给泛化可见结果。",
+    "server_authority": "如果存在前后端分层，最终权限检查必须在规则引擎/服务端执行，不能只依赖UI隐藏字段。"
+  },
+  "required_tests": [
+    {
+      "id": "RB01",
+      "setup": "Power.external_single_target_exception=false；ActionRequest伪造external_single_target_exception=true；target为外部单体",
+      "expected": "伪造字段无效，仍路由AreaRestartGate"
+    },
+    {
+      "id": "RB02",
+      "setup": "PlanEvaluator输出claimed_external_single_target=true；Power canonical exception=false",
+      "expected": "仍路由AreaRestartGate"
+    },
+    {
+      "id": "RB03",
+      "setup": "Power canonical external_single_target_exception=true；Action仅声明外部单目标",
+      "expected": "进入exceptional_external_single path"
+    },
+    {
+      "id": "RB04",
+      "setup": "Power.can_rewind_own_source_revival=false；Action伪造true；self restart含revival_state",
+      "expected": "伪造无效，source自身revival_state仍被剔除"
+    },
+    {
+      "id": "RB05",
+      "setup": "AI parsed plan声称可以刷新自身复苏；Power canonical=false",
+      "expected": "不能刷新自身revival_state"
+    },
+    {
+      "id": "RB06",
+      "setup": "Power canonical can_rewind_own_source_revival=true",
+      "expected": "允许进入特殊自身复苏回退mechanism判定；不代表自动成功"
+    },
+    {
+      "id": "RB07",
+      "setup": "Action执行后检查Power restart_profile",
+      "expected": "特殊权限字段未被Action写入/修改"
+    },
+    {
+      "id": "RB08",
+      "setup": "save/load后Power canonical permission",
+      "expected": "权限值保持原始Power定义；action history不能提升权限"
+    },
+    {
+      "id": "RB09",
+      "setup": "玩家连续尝试外部单体重启但Power exception=false",
+      "expected": "每次都按AreaRestartGate，不因尝试次数解锁例外"
+    },
+    {
+      "id": "RB10",
+      "setup": "错误特殊权限尝试",
+      "expected": "玩家可见反馈不泄露canonical hidden flag，只表现为能力未按预期作用/进入范围重启限制"
+    }
+  ],
+  "regression_requirements": [
+    "RF01-RF14全部继续通过",
+    "RA01-RA18全部继续通过",
+    "RR01-RR15全部继续通过",
+    "RT01-RT18全部继续通过",
+    "DH01-DH12全部继续通过",
+    "P2 current-strength driving不变",
+    "applyRevivalDelta统一入口不变",
+    "transaction save/load去重不变",
+    "Source Contact/SuppressionLock/CurseLink不变",
+    "6800与词条门槛不变"
+  ],
+  "implementation_constraints": [
+    "不实现完整RevivalEndpointEngine",
+    "不实现完整世界快照回退",
+    "不实现记忆/因果型重启",
+    "不接在线LLM",
+    "不做UI大改",
+    "不修改范围重启6800",
+    "不新增额外高位鬼域tag/阈值"
+  ],
+  "freeze_after_pass": {
+    "p3_b24_restart_targeting": "freeze",
+    "p3_b24_self_exclusion": "freeze",
+    "p3_b24_external_restart": "freeze",
+    "p3_b24_action_routing": "freeze",
+    "p3_b24_unified_revival": "freeze",
+    "p3_b24_transaction_persistence": "freeze",
+    "next_stage": "P3-B3 RevivalEndpointEngine"
+  },
+  "post_implementation_audit": {
+    "required": true,
+    "mode": "read_only",
+    "output_file": "seal_room_p3b24_fix2_restart_trust_boundary_audit.json",
+    "must_stop_coding_before_audit": true,
+    "must_verify": [
+      "external_single_target_exception是否只从canonical Power/GM hidden读取",
+      "can_rewind_own_source_revival是否只从canonical Power/GM hidden读取",
+      "Action/AI伪造同名字段是否无法提升权限",
+      "PlanEvaluator是否只输出claimed intent而不是规则事实",
+      "Action是否不能修改restart_profile权限",
+      "save/load是否不会由action history提升权限",
+      "错误尝试是否不泄露hidden",
+      "全部既有冻结规则是否无回归"
+    ]
+  }
+}

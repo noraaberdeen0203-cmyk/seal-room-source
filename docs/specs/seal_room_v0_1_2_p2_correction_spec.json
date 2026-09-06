@@ -1,0 +1,392 @@
+{
+  "document_type": "seal_room_p2_correction_spec",
+  "project_name": "隔绝室",
+  "project_name_en": "Seal Room",
+  "target_version": "0.1.2-P2-fix",
+  "language": "zh-CN",
+  "purpose": "依据最新P2规则与上一次只读审查结果，对现有实现进行收敛性修正；不扩展正式剧情，不新增与P2无关的大系统。",
+  "source_of_truth_priority": [
+    "本文件",
+    "seal_room_v0_1_1_p2_addendum.json",
+    "supernatural_trpg_simulator_architecture_task.json",
+    "现有代码中已验证且不与本文件冲突的规则"
+  ],
+  "revision_principles": [
+    "规则优先于骰子",
+    "每只厉鬼必须是独立GhostEntity",
+    "玩家当前灵异强度以GhostEntity体系为唯一真源，旧Power不得覆盖",
+    "关押判定使用源头current_strength",
+    "驾驭资格判定使用双方max_strength或现有灵异结构max-equivalent",
+    "驾驭成功后复苏度下降，随后按新复苏度重算非死机鬼current_strength",
+    "死机鬼current_strength不受角色统一awakening_factor折减，直接贡献当前强度",
+    "灵异叠加不使用线性乘法；统一由StackingEngine处理",
+    "AI叙事层不得接收未揭示hidden内容",
+    "玩家导出不得包含hidden字段"
+  ],
+  "non_goals": [
+    "不接入正式原著人物数值",
+    "不制作正式剧情",
+    "不重做整体UI风格",
+    "不新增复杂关押物迁移状态机",
+    "不把C/B/A/S改成战斗力等级",
+    "不把驾驭数量线性相加为战力",
+    "不让D100越过硬规则门"
+  ],
+  "canonical_strength_semantics": {
+    "max_strength": "厉鬼完整规则/完全复苏意义上的实际上限；用于驾驭资格和位阶比较。",
+    "current_strength": "厉鬼当前苏醒/当前可表现出来的灵异强度。",
+    "controlled_strength": "宿主能主动调用的部分，用于特定主动能力判定，不是玩家总强度唯一来源。",
+    "uncontrolled_strength": "厉鬼自行复苏、反噬、被动袭击时的强度。",
+    "attack_strength": "一次具体袭击正在施加的强度，不用于普通驾驭长期资格判断。",
+    "player_current_strength": "当前所有已驾驭灵异结构经复苏系数、死机例外与叠加修正后的当前有效强度。"
+  },
+  "required_corrections": {
+    "R01_driving_eligibility_max_strength": {
+      "priority": "P0",
+      "problem": "当前驾驭资格用attack_strength比较位阶。",
+      "required_behavior": {
+        "single_hosted_ghost": "比较 hosted.max_strength 与 incoming.max_strength。",
+        "multi_ghost_host": "先由现有灵异结构生成max-equivalent opposition，再与 incoming.max_strength 比较。",
+        "tier_rule": {
+          "gap_0": "允许进入正常平衡判定",
+          "gap_1": "允许进入正常判定，但风险/代价提高",
+          "gap_2": "普通路线不得直接成功；仅在特殊压制、剧情条件或明确叠加结构成立时继续，否则偏向anchor/conflict/failure",
+          "gap_3_plus": "正常驾驭不可行，强行驾驭显著偏向collapse/anchor"
+        }
+      },
+      "must_not_use": [
+        "current_strength作为普通驾驭资格的主要比较值",
+        "attack_strength作为长期平衡资格的主要比较值"
+      ]
+    },
+    "R02_revival_awakening_binding": {
+      "priority": "P0",
+      "problem": "current_strength未与revival_degree强绑定。",
+      "required_behavior": {
+        "normal_ghost_formula": "current_strength_i = max_strength_i * awakening_factor(revival_degree, ghost_profile)",
+        "awakening_factor": {
+          "range": "(0,1)",
+          "monotonic": "复苏度越高，awakening_factor越高",
+          "configurable": true,
+          "default_behavior": "支持开局约1/3或1/2 max_strength；参数集中配置，不写死在角色数据"
+        },
+        "ghost_activity_role": "ghost_activity可作为短期扰动、阈值修正或额外增益，但不能替代revival_degree作为主变量。"
+      }
+    },
+    "R03_successful_driving_reduces_revival": {
+      "priority": "P0",
+      "problem": "当前驾驭成功增加复苏度。",
+      "required_behavior": {
+        "standard_driving_success": "成功形成新的有效平衡/对冲后，revival_degree下降。",
+        "forced_driving": "强行驾驭可下降较少、不下降甚至上升，由结果状态决定。",
+        "after_success_recompute": [
+          "更新balance_state",
+          "降低revival_degree",
+          "根据新revival_degree重算所有非死机鬼current_strength",
+          "重算player_current_strength",
+          "再进行StackingEngine修正"
+        ],
+        "important": "必须允许驾驭第二只鬼成功后，玩家短期当前灵异强度下降；不得设置最低战力提升保护。"
+      }
+    },
+    "R04_player_strength_single_source_of_truth": {
+      "priority": "P0",
+      "problem": "Character.powers/Power.stacking仍会回写effective_strength。",
+      "required_behavior": {
+        "player_current_strength_formula": "sum(normal_ghost_current_strength) + sum(deadlocked_ghost_current_strength)",
+        "normal_ghost_current_strength": "max_strength * awakening_factor",
+        "deadlocked_ghost_current_strength": "取死机鬼状态机current_strength，直接加入，不乘统一awakening_factor",
+        "stacking": "基础求和后，仅在满足特殊叠加机制时交由统一StackingEngine计算stacked_pressure/effective_pressure",
+        "power_role": "Power保留为能力表现、调用方式、机制标签与UI描述；不得作为角色强度权威来源。"
+      }
+    },
+    "R05_unify_stacking_engine": {
+      "priority": "P1",
+      "problem": "Power.stacking与ghost-relations各自存在一套叠加逻辑。",
+      "required_behavior": {
+        "single_engine": "所有1×2≈3特殊叠加必须进入统一StackingEngine。",
+        "trigger": "只有存在明确stacking机制标签/规则时才允许特殊叠加。",
+        "models": {
+          "cooperative_1_plus_2": "合力型，不直接线性相加；按机制匹配与递减辅助贡献生成opposition",
+          "equilibrium_1_approx_2_approx_3": "等势平衡型，主要提升平衡潜力/死机可能/容错，不自动抬高总强度",
+          "stacked_1_times_2": "特殊叠加型，由StackingEngine计算非线性叠加结果"
+        }
+      }
+    },
+    "R06_independent_killing_rule_runtime": {
+      "priority": "P1",
+      "problem": "KillingRule存在于GhostEntity，但运行时主要仍是事件级detectRuleTrigger。",
+      "required_behavior": {
+        "per_ghost_runtime": [
+          "每回合遍历相关GhostEntity.killing_rules",
+          "独立记录triggered/stage/target",
+          "独立维护attack_state",
+          "事件级规则可作为聚合层，但不能替代单鬼状态"
+        ],
+        "required_fields": [
+          "is_attacking",
+          "current_attack_target",
+          "attack_intent_source",
+          "attack_stage",
+          "killing_rules[].triggered",
+          "killing_rules[].target_id",
+          "killing_rules[].stage"
+        ]
+      }
+    },
+    "R07_simultaneous_collision": {
+      "priority": "P1",
+      "problem": "现有碰撞只在驾驭入口具备部分等价逻辑。",
+      "required_behavior": {
+        "rule": "当新鬼与已驾驭鬼同时对宿主成立袭击时，必须作为一次灵异碰撞整体结算，不得按普通先后攻击顺序结算。",
+        "possible_results": [
+          "one_suppresses_other",
+          "mutual_interference",
+          "partial_deadlock",
+          "dual_ghost_deadlock",
+          "multi_puzzle_conflict",
+          "anchor_state",
+          "collapse"
+        ],
+        "host_is_battlefield": true
+      }
+    },
+    "R08_deadlock_rules": {
+      "priority": "P1",
+      "required_behavior": {
+        "suppression_formula": "deadlocked.current_strength > sum(related_other.current_strength) => 本轮角色revival_degree不增加",
+        "equal_case": "相等视为压制失效，正常进行复苏判定",
+        "state_continues": "即使复苏度不增加，各鬼current_strength、activity、balance_state仍可变化",
+        "scope": [
+          "local_deadlock",
+          "global_deadlock",
+          "rule_deadlock",
+          "revival_deadlock"
+        ],
+        "important": "死机鬼不等于max_strength全解锁；使用其状态机current_strength直接贡献。"
+      }
+    },
+    "R09_party_containment_wiring": {
+      "priority": "P1",
+      "problem": "队友贡献函数存在但主流程未传参。",
+      "required_behavior": {
+        "count_strength_if_role": [
+          "contain_source",
+          "direct_source_suppression"
+        ],
+        "do_not_add_strength_if_role": [
+          "evacuate",
+          "suppress_medium",
+          "protect_player",
+          "hold_domain",
+          "observe",
+          "inactive"
+        ],
+        "non_strength_roles_effect": "可以提供窗口、降低失控度、降低机制惩罚或失败后果，但不直接加关押强度。",
+        "ui_store_pipeline": "teammate_roles必须从UI/store接入resolveAction"
+      }
+    },
+    "R10_hidden_information_hard_separation": {
+      "priority": "P0",
+      "problem": "askGm仍传gm_notes_hidden_in，exportSave导出full save。",
+      "required_behavior": {
+        "ai_input": "AI Narrator只接收player-visible上下文与已完成的可见ResolutionResult；不得传hidden source、hidden rules、gm_notes_hidden、未揭示NPC动机。",
+        "player_export": "普通玩家导出必须strip hidden。",
+        "gm_export": "如需完整导出，应显式提供GM专用导出动作，不与普通导出混用。",
+        "post_filter": "输出扫描只能作为兜底，不能作为主保护机制。"
+      }
+    },
+    "R11_player_ui_information": {
+      "priority": "P2",
+      "required_behavior": {
+        "hide_exact_source_strength_by_default": "玩家默认不显示源头精确强度；GM/开发模式可显示。",
+        "hide_internal_balance_enum": "玩家不要直接看到dual_ghost_deadlock等内部enum，改为现象性描述。",
+        "difficulty": {
+          "easy": "允许模糊提示对象可能非源头",
+          "standard": "仅通过现象和结果提示",
+          "hard": "不提示真实对象类型，不给关错对象警告"
+        }
+      }
+    },
+    "R12_save_migration": {
+      "priority": "P2",
+      "required_behavior": {
+        "migrate_old_save": "旧localStorage存档缺ghosts/special_inventory/balance等字段时应迁移补默认值，或明确拒绝并提示不兼容；不能静默让P2失效。"
+      }
+    }
+  },
+  "driving_pipeline": [
+    "确认目标是可驾驭厉鬼/拼图；普通路线必须已关押",
+    "读取incoming.max_strength",
+    "读取体内现有灵异结构max-equivalent",
+    "做strength_band/tier_gap资格判断",
+    "若强行驾驭，应用结构性惩罚",
+    "让新鬼与已驾驭鬼对宿主进入simultaneous supernatural collision",
+    "判断balance/deadlock/conflict/anchor/collapse",
+    "若成功形成新有效平衡，则降低revival_degree",
+    "按新revival_degree重算所有非死机鬼current_strength",
+    "死机鬼current_strength独立保留并直接贡献",
+    "重算player_current_strength",
+    "若满足特殊叠加机制，调用统一StackingEngine",
+    "结算身体/意识/隐藏污染等代价"
+  ],
+  "containment_pipeline": [
+    "玩家选择可见目标",
+    "hidden层判断是否真实源头",
+    "非源头不得resolved",
+    "源头需通过现实存在/关押窗口/隔绝手段/机制检查",
+    "计算己方有效关押强度",
+    "计算源头current_strength",
+    "己方 > 源头 => 允许contained",
+    "己方 <= 源头 => 只能limited/failed",
+    "D100只决定代价/质量/失败形式，不能越过强度门",
+    "成功后生成contained_ghost特殊物品引用，可保存/交易/上交/后续驾驭"
+  ],
+  "test_matrix_required": [
+    {
+      "id": "IT01",
+      "name": "关押强度不足+骰01不能成功",
+      "pipeline": "resolveAction",
+      "expected": "not contained"
+    },
+    {
+      "id": "IT02",
+      "name": "关押强度相等",
+      "pipeline": "resolveAction",
+      "expected": "limited"
+    },
+    {
+      "id": "IT03",
+      "name": "剧情队友同目标贡献",
+      "pipeline": "UI/store->resolveAction",
+      "expected": "only direct suppressors counted"
+    },
+    {
+      "id": "IT04",
+      "name": "驾驭资格使用max_strength",
+      "pipeline": "resolveAction",
+      "expected": "tier gap based on max"
+    },
+    {
+      "id": "IT05",
+      "name": "驾驭成功后revival下降",
+      "pipeline": "resolveAction",
+      "expected": "revival_degree decreases"
+    },
+    {
+      "id": "IT06",
+      "name": "驾驭后current按新revival重算",
+      "pipeline": "resolveAction",
+      "expected": "non-deadlock current recomputed"
+    },
+    {
+      "id": "IT07",
+      "name": "驾驭后短期变弱",
+      "pipeline": "resolveAction",
+      "expected": "player_current_strength may decrease"
+    },
+    {
+      "id": "IT08",
+      "name": "死机鬼压制复苏",
+      "pipeline": "resolveAction",
+      "expected": "strict > suppresses revival gain"
+    },
+    {
+      "id": "IT09",
+      "name": "死机鬼等于其余和",
+      "pipeline": "resolveAction",
+      "expected": "suppression fails; normal revival check"
+    },
+    {
+      "id": "IT10",
+      "name": "特殊叠加必须有机制标签",
+      "pipeline": "resolveAction",
+      "expected": "no stacking without explicit mechanism"
+    },
+    {
+      "id": "IT11",
+      "name": "多鬼共同袭击宿主",
+      "pipeline": "resolveAction",
+      "expected": "single collision resolution, not sequential attacks"
+    },
+    {
+      "id": "IT12",
+      "name": "AI输入不含hidden",
+      "pipeline": "askGm integration",
+      "expected": "no hidden fields in payload"
+    },
+    {
+      "id": "IT13",
+      "name": "玩家导出不含hidden",
+      "pipeline": "export",
+      "expected": "hidden stripped"
+    },
+    {
+      "id": "IT14",
+      "name": "旧存档迁移",
+      "pipeline": "loadLocal",
+      "expected": "P2 fields migrated or explicit failure"
+    }
+  ],
+  "completion_gates": {
+    "p0_gate": [
+      "R01",
+      "R02",
+      "R03",
+      "R04",
+      "R10"
+    ],
+    "p1_gate": [
+      "R05",
+      "R06",
+      "R07",
+      "R08",
+      "R09"
+    ],
+    "p2_gate": [
+      "R11",
+      "R12"
+    ],
+    "declare_p2_complete_only_if": [
+      "所有P0和P1完成",
+      "关键规则已接入resolveAction主管道",
+      "IT01-IT13至少均有可验证结果",
+      "不存在Power覆盖GhostEntity强度的双轨",
+      "AI输入与玩家导出不存在hidden泄漏"
+    ]
+  },
+  "post_implementation_audit_required": {
+    "required": true,
+    "file_name": "seal_room_post_fix_implementation_audit.json",
+    "instructions": [
+      "完成修改后立即进行一次只读审查",
+      "不要在审查过程中再修改代码",
+      "逐项对照本修正规范",
+      "必须区分done/partial/missing/incorrect/unknown",
+      "每项必须附源码文件、symbol与测试证据",
+      "必须说明是否真正经过resolveAction主管道",
+      "必须列出所有失败测试与未验证声明",
+      "最终只输出一个严格合法JSON文件",
+      "报告不得把计划功能计入完成度"
+    ],
+    "minimum_report_sections": [
+      "overall_verdict",
+      "source_of_truth",
+      "repository_inspection",
+      "implemented_features",
+      "partial_features",
+      "missing_features",
+      "p2_review",
+      "containment_review",
+      "information_separation_review",
+      "behavioral_tests",
+      "deviations",
+      "implementation_ambiguities",
+      "technical_debt",
+      "unverified_claims",
+      "architecture_drift",
+      "next_required_work",
+      "final_assessment"
+    ]
+  }
+}

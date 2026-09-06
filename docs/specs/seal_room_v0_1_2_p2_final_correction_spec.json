@@ -1,0 +1,350 @@
+{
+  "document_type": "seal_room_p2_final_correction_spec",
+  "project_name": "隔绝室",
+  "project_name_en": "Seal Room",
+  "target_version": "0.1.2-P2-final",
+  "language": "zh-CN",
+  "purpose": "在0.1.2-P2-fix基础上进行最后一次P2规则收敛，仅修正剩余一致性问题；完成后冻结P2基础层并生成新的只读审查报告。",
+  "source_of_truth_priority": [
+    "本文件",
+    "seal_room_v0_1_2_p2_correction_spec.json",
+    "seal_room_v0_1_1_p2_addendum.json",
+    "supernatural_trpg_simulator_architecture_task.json",
+    "现有代码中已验证且不与上述文档冲突的行为"
+  ],
+  "current_baseline": {
+    "accepted_as_done": [
+      "驾驭资格使用max_strength或max-equivalent",
+      "revival_degree与非死机鬼current_strength建立主绑定",
+      "标准驾驭成功后revival_degree下降并重算current_strength",
+      "player effective_strength由GhostEntity体系产生，旧Power不再覆盖",
+      "特殊叠加统一进入StackingEngine",
+      "关押硬门使用源头current_strength且D100不可越过",
+      "死机鬼current_strength严格大于相关其余鬼之和时阻止本轮复苏增长",
+      "相等时视为死机压制失效",
+      "剧情队友角色已接入resolveAction",
+      "AI使用visibleResolution，普通导出使用stripHiddenSave",
+      "玩家默认不显示精确source_strength和内部balance enum",
+      "旧存档已有迁移逻辑"
+    ],
+    "must_not_regress": [
+      "不要恢复Power覆盖玩家总强度",
+      "不要重新使用attack_strength作为普通驾驭资格",
+      "不要让骰子突破关押硬强度门",
+      "不要把hidden重新传给askGm",
+      "不要把危害等级映射为战斗力",
+      "不要按厉鬼数量做线性战力加总"
+    ]
+  },
+  "final_required_corrections": {
+    "F01_explicit_forced_driving_only": {
+      "priority": "P0",
+      "problem": "当前evaluateDrivingP2存在 force || incoming.is_attacking，导致正在袭击的厉鬼可能把普通驾驭自动转换为强行驾驭。",
+      "required_behavior": {
+        "standard_drive": "只有玩家显式选择普通驾驭且满足已关押/标准前提时才进入standard driving。",
+        "forced_drive": "只有玩家显式选择force_drive/强行驾驭动作时才进入forced driving。",
+        "incoming_attacking": "若厉鬼正在袭击且玩家没有显式选择强行驾驭，则普通驾驭应返回不可用/前提不足，不得自动force。",
+        "ui": [
+          "普通驾驭按钮在前提不满足时不可用或不显示",
+          "强行驾驭作为独立高危选项显示",
+          "高危提示仅描述风险，不泄露hidden"
+        ],
+        "resolution_input": "standard drive 与 force drive 必须使用不同的显式action_type或等价显式flag。"
+      },
+      "acceptance": [
+        "没有玩家显式force动作时，incoming.is_attacking不能自动触发forced branch",
+        "普通驾驭失败前提不会偷偷落入强行驾驭结果",
+        "强行驾驭仍保留高风险状态权重和额外代价"
+      ]
+    },
+    "F02_per_ghost_killing_rules_single_source": {
+      "priority": "P0",
+      "problem": "GhostEntity.killing_rules已运行，但事件级detectRuleTrigger仍与其并行承担具体厉鬼杀人规律hard block。",
+      "required_behavior": {
+        "ghost_rule_source": "凡属于某只具体厉鬼的杀人规律，GhostEntity.killing_rules必须是运行时唯一真源。",
+        "event_rule_role": [
+          "事件级规则只允许作为聚合层",
+          "或表示不属于单一厉鬼的环境/灵异之地/场景规则",
+          "不得重新复制某只鬼自己的杀人规律判定"
+        ],
+        "aggregation": "Event Rule Engine读取各GhostEntity已经产生的trigger/stage/target结果，并据此生成事件级hard_block、传播、时钟等结果。",
+        "state_writeback": [
+          "killing_rules[].triggered",
+          "killing_rules[].target_id",
+          "killing_rules[].stage",
+          "attack_state.is_attacking",
+          "attack_state.current_attack_target",
+          "attack_state.attack_intent_source",
+          "attack_state.attack_stage"
+        ],
+        "environment_rules": "如果现有detectRuleTrigger还保留，必须重命名或重构为environment/event aggregation语义，且不能对具体GhostEntity规则重复判定。"
+      },
+      "acceptance": [
+        "同场多鬼可分别记录不同trigger、target和stage",
+        "不存在同一具体厉鬼规则被Ghost tick和Event detector重复触发两次",
+        "hard_block仍可正常从聚合结果产生"
+      ]
+    },
+    "F03_awakening_reaches_full_max": {
+      "priority": "P0",
+      "problem": "当前awakening_factor基础范围约0.12-0.9并带activity扰动，可能导致revival_degree=100时current_strength仍达不到max_strength。",
+      "required_behavior": {
+        "semantic_rule": "max_strength表示厉鬼完整规则/完全复苏意义上的实际上限，因此revival_degree=100时非死机鬼应达到current_strength=max_strength。",
+        "default_formula": "awakening_factor = base_awakening + (1 - base_awakening) * revival_degree / 100",
+        "base_awakening": {
+          "default_supported_values": [
+            0.33,
+            0.5
+          ],
+          "configurable": true,
+          "meaning": "刚驾驭/低复苏时该鬼通常只能表现出上限约1/3或1/2"
+        },
+        "range": "[base_awakening, 1.0]",
+        "monotonic": true,
+        "activity_role": [
+          "ghost_activity不再直接改变基础current_strength",
+          "ghost_activity可以影响attack_strength",
+          "ghost_activity可以影响uncontrolled_strength",
+          "ghost_activity可以影响规律推进速度、触发倾向、主动性或短期袭击强度"
+        ],
+        "deadlock_exception": "死机鬼继续使用自身状态机current_strength，不套用统一awakening_factor。"
+      },
+      "acceptance": [
+        "revival_degree=0时factor=base_awakening",
+        "revival_degree=50时factor严格位于base与1之间",
+        "revival_degree=100时factor=1.0",
+        "非死机鬼current_strength在100复苏时精确等于max_strength",
+        "ghost_activity变化不会改写非死机鬼基础current_strength"
+      ]
+    },
+    "F04_containment_effective_strength": {
+      "priority": "P0",
+      "problem": "当前关押己方强度可能直接使用hosted current_strength求和，存在特殊叠加在关押时被忽略的风险。",
+      "required_behavior": {
+        "definition": "containment_effective_strength是本次关押中真正能作用于所选源头的己方当前有效灵异强度。",
+        "player_base": "优先从player_current_strength / GhostEntity当前结构取得，而不是重新退回简单sum(current_strength)。",
+        "stacking": "若当前玩家灵异结构存在明确且对该关押目标有效的特殊叠加，必须使用统一StackingEngine后的结果。",
+        "mechanism_applicability": "只有能够作用于当前源头/当前关押结果的机制贡献才计入；与目标机制无关的能力不能无条件提供全额数值。",
+        "teammates": "剧情队友同理：只计算参与同一源头直接压制且机制有效的containment_effective_strength。",
+        "items_environment": "黄金、灵异物品、环境只以明确的压制/窗口/机制修正参与，不得把所有道具无条件当作加法战力。",
+        "hard_gate": "最终仍保持 allies_containment_effective_strength > source.current_strength 才能contained。"
+      },
+      "acceptance": [
+        "无stacking时结果与GhostEntity当前结构基础强度一致",
+        "有有效1×2特殊叠加时关押强度可以体现StackingEngine结果",
+        "有stacking但机制与目标无关时不得获得该叠加的全部关押贡献",
+        "剧情队友只有同目标直接压制且机制有效时计入",
+        "骰子仍不能越过最终强度硬门"
+      ]
+    },
+    "F05_revival_relief_tuning_marker": {
+      "priority": "P1",
+      "problem": "当前标准驾驭成功固定revival=-48属于测试调参值，尚未体现不同平衡质量。",
+      "required_behavior": {
+        "this_round": "本轮不强制重做完整公式，以避免扩大范围。",
+        "must_do": [
+          "将固定-48集中到配置项，例如DRIVING_BALANCE_RELIEF_DEFAULT",
+          "明确标记为temporary_tuning_constant",
+          "不得散落硬编码",
+          "保留未来按balance_state/strength_match/forced状态替换的接口"
+        ],
+        "future_interface": [
+          "partial_deadlock -> 较低relief",
+          "dual_ghost_deadlock -> 中等relief",
+          "stable_deadlock -> 较高relief",
+          "forced temporary balance -> 极低/0/甚至正向复苏"
+        ]
+      },
+      "acceptance": [
+        "代码中不存在多个散落-48",
+        "测试可从集中配置读取",
+        "后续替换成动态relief无需改主管道结构"
+      ]
+    }
+  },
+  "canonical_runtime_flow": {
+    "per_turn_ghost_rules": [
+      "读取相关GhostEntity",
+      "逐鬼运行killing_rules",
+      "写回每只鬼trigger/stage/target/attack_state",
+      "事件层仅聚合这些结果与环境规则",
+      "生成hard_block/事件后果"
+    ],
+    "standard_driving": [
+      "玩家显式选择standard_drive",
+      "验证contained_ghost/标准前提",
+      "比较existing max-equivalent与incoming.max_strength",
+      "进入simultaneous_supernatural_collision",
+      "若形成有效平衡则降低revival_degree",
+      "重算非死机鬼current_strength",
+      "死机鬼保持自身current_strength",
+      "重算player_current_strength",
+      "如有明确stacking机制则进入统一StackingEngine",
+      "结算身体/意识/污染等代价"
+    ],
+    "forced_driving": [
+      "玩家显式选择force_drive",
+      "不因incoming.is_attacking自动进入",
+      "应用强行驾驭结构性惩罚",
+      "进入simultaneous_supernatural_collision",
+      "结果可以是temporary_balance/anchor/conflict/collapse等",
+      "复苏relief可以较低、0或反向增加"
+    ],
+    "containment": [
+      "玩家选择可见目标",
+      "hidden确认是否真实源头",
+      "通过现实/窗口/隔绝/机制前置检查",
+      "计算player containment_effective_strength",
+      "加入有效剧情队友containment_effective_strength",
+      "加入明确物品/环境修正",
+      "与source.current_strength比较",
+      "严格大于才可contained",
+      "骰子只决定代价/质量/失败形式"
+    ]
+  },
+  "required_tests": [
+    {
+      "id": "FT01",
+      "title": "正在袭击不会自动强行驾驭",
+      "pipeline": "PlayView/store -> resolveAction",
+      "setup": "incoming.is_attacking=true，玩家只选择standard_drive",
+      "expected": "返回普通驾驭前提不成立/不可用；forced=false"
+    },
+    {
+      "id": "FT02",
+      "title": "显式强行驾驭",
+      "pipeline": "PlayView/store -> resolveAction",
+      "setup": "玩家明确选择force_drive",
+      "expected": "forced=true并应用额外风险"
+    },
+    {
+      "id": "FT03",
+      "title": "多鬼规则独立触发",
+      "pipeline": "resolveAction",
+      "setup": "Ghost A和Ghost B拥有不同规律与不同目标",
+      "expected": "两只鬼的trigger/target/stage分别写回，不互相覆盖"
+    },
+    {
+      "id": "FT04",
+      "title": "事件聚合不重复触发具体鬼规律",
+      "pipeline": "resolveAction",
+      "setup": "某Ghost规则已由per-ghost tick触发",
+      "expected": "Event aggregation只消费结果，不第二次重新触发同一Ghost规则"
+    },
+    {
+      "id": "FT05",
+      "title": "awakening到达1.0",
+      "pipeline": "awakening + resolveAction",
+      "setup": "revival_degree=100",
+      "expected": "非死机鬼current_strength == max_strength"
+    },
+    {
+      "id": "FT06",
+      "title": "activity不改变基础current",
+      "pipeline": "awakening",
+      "setup": "固定revival_degree，改变ghost_activity",
+      "expected": "基础current_strength不变；attack/uncontrolled允许变化"
+    },
+    {
+      "id": "FT07",
+      "title": "关押吃到有效特殊叠加",
+      "pipeline": "resolveAction",
+      "setup": "玩家两鬼具有对源头有效stacking mechanism",
+      "expected": "containment_effective_strength体现统一StackingEngine结果"
+    },
+    {
+      "id": "FT08",
+      "title": "无关叠加不得全额用于关押",
+      "pipeline": "resolveAction",
+      "setup": "玩家有stacking，但mechanism与当前源头关押无关",
+      "expected": "该叠加不提供完整containment增益"
+    },
+    {
+      "id": "FT09",
+      "title": "队友关押机制有效性",
+      "pipeline": "PlayView/store -> resolveAction",
+      "setup": "两个队友都选direct_source_suppression，但一人机制不匹配",
+      "expected": "只有机制有效者的关押贡献计入"
+    },
+    {
+      "id": "FT10",
+      "title": "关押硬门仍不可被骰子越过",
+      "pipeline": "resolveAction",
+      "setup": "最终containment_effective_strength <= source.current_strength，force_roll=1",
+      "expected": "不得contained"
+    },
+    {
+      "id": "FT11",
+      "title": "驾驭资格仍使用max_strength",
+      "pipeline": "resolveAction",
+      "setup": "attack_strength接近但max_strength差距>=2阶",
+      "expected": "普通驾驭不得按attack_strength错误成功"
+    },
+    {
+      "id": "FT12",
+      "title": "hidden隔离回归测试",
+      "pipeline": "askGm payload builder + export",
+      "expected": "AI payload与玩家导出均不含hidden"
+    }
+  ],
+  "implementation_constraints": [
+    "本轮不新增正式剧情",
+    "本轮不做关押物交易经济系统",
+    "本轮不做完整梦境系统",
+    "本轮不做鬼域层级系统",
+    "本轮不重写UI，只做必要显式选项和信息显示修正",
+    "本轮不引入新的复杂状态迁移",
+    "本轮完成后冻结P2基础规则，不再继续扩张P2范围"
+  ],
+  "completion_gate": {
+    "declare_p2_complete_if": [
+      "F01-F04全部done",
+      "F05至少完成集中配置与temporary标记",
+      "FT01-FT12均有可验证结果",
+      "具体厉鬼杀人规律不存在双重运行真源",
+      "标准驾驭与强行驾驭由玩家显式选择区分",
+      "revival_degree=100时非死机鬼current_strength可达到max_strength",
+      "关押可正确消费适用于该目标的特殊叠加强度",
+      "未发现P0/P1架构漂移或hidden泄漏"
+    ],
+    "after_completion": "冻结P2并进入后续P3规划，不再在本轮继续新增P2功能。"
+  },
+  "post_fix_audit": {
+    "required": true,
+    "audit_mode": "read_only",
+    "output_file": "seal_room_p2_final_implementation_audit.json",
+    "must_stop_coding_before_audit": true,
+    "requirements": [
+      "完成修改与测试后停止修改代码",
+      "重新逐项检查本final spec与上一版correction spec",
+      "区分done/partial/missing/incorrect/unknown",
+      "每项提供源码文件、symbol、调用链和测试证据",
+      "明确哪些测试经过resolveAction，哪些经过PlayView/store，哪些只做纯函数",
+      "检查是否存在自动force残留",
+      "检查事件级规则是否仍重复判定具体Ghost killing rule",
+      "检查revival=100时current=max的实际测试",
+      "检查containment_effective_strength是否真正调用统一StackingEngine",
+      "检查AI payload和玩家导出hidden隔离是否回归",
+      "不得把计划功能计入完成度"
+    ],
+    "minimum_report_sections": [
+      "overall_verdict",
+      "source_of_truth",
+      "repository_inspection",
+      "final_corrections_review",
+      "p2_review",
+      "containment_review",
+      "killing_rule_runtime_review",
+      "information_separation_review",
+      "behavioral_tests",
+      "deviations",
+      "implementation_ambiguities",
+      "technical_debt",
+      "unverified_claims",
+      "architecture_drift",
+      "p2_freeze_recommendation",
+      "next_required_work",
+      "final_assessment"
+    ]
+  }
+}

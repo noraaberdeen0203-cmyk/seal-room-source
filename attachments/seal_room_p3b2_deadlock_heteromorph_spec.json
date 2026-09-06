@@ -1,0 +1,332 @@
+{
+  "document_type": "seal_room_p3b2_deadlock_heteromorph_spec",
+  "project_name": "隔绝室",
+  "target_version": "0.1.2-P3-B2-deadlock-heteromorph",
+  "language": "zh-CN",
+  "purpose": "定义P3-B2死机与异类转换硬规则、玩家自创方案逻辑审查、意识保护门、强度门与D100顺序；不改动已冻结P2/P3-A/B基础公式。",
+  "source_of_truth_priority": [
+    "本文件",
+    "seal_room_p3ab_fix1_spec.json",
+    "seal_room_p2_amendment01_p3ab_spec.json",
+    "seal_room_v0_1_2_p2_final_correction_spec.json"
+  ],
+  "hard_rules": {
+    "balance_not_deadlock": {
+      "rule": "普通多鬼平衡不是死机。",
+      "forbidden": [
+        "强度接近自动死机",
+        "stable_balance自动获得deadlock资格",
+        "因旧枚举名称含deadlock而跳过机制门"
+      ]
+    },
+    "deadlock_requires_rule_lock": {
+      "rule": "死机必须来自真实灵异规则对抗与持续闭锁。",
+      "minimum": [
+        "至少两股真实灵异力量或一只厉鬼与另一明确灵异机制",
+        "作用于同一个核心灵异结果",
+        "存在真实机制冲突",
+        "具有持续闭锁可能",
+        "逻辑成立后current_strength足以让该闭锁实际维持"
+      ],
+      "not_sufficient": [
+        "strength相等",
+        "普通稳定平衡",
+        "D100极端成功",
+        "同场有多只鬼但没有规则冲突"
+      ]
+    },
+    "heteromorph_requires_deadlock": {
+      "rule": "异类必须以前置死机为基础。",
+      "strict_order": [
+        "BALANCE",
+        "DEADLOCK",
+        "HETEROMORPH"
+      ],
+      "same_plan_allowed": true,
+      "same_event_allowed": true,
+      "must_resolve_in_order": true
+    },
+    "heteromorph_definition": {
+      "rule": "异类本质为：人类记忆/意识主导已经死机的厉鬼或灵异结构。",
+      "worldview_semantics": "在《神秘复苏》判定层中，memory≈consciousness。",
+      "requires": [
+        "死机已真实成立",
+        "人类记忆/意识仍存在",
+        "意识在转化关键阶段被明确特殊灵异机制保护/固定",
+        "最终控制权属于人类记忆而非厉鬼规则"
+      ]
+    },
+    "special_mechanism_required": {
+      "rule": "死机与异类不能仅靠数值或骰子自然获得，必须依赖特殊事件或特殊灵异机制。",
+      "candidate_categories": [
+        "memory",
+        "consciousness",
+        "idealistic",
+        "restart",
+        "equivalent_deadlock_enabling_mechanism"
+      ],
+      "important": "tag只用于候选检索，不能因tag存在就自动通过。"
+    },
+    "logic_before_dice": {
+      "rule": "玩家可自行编造方案；AI先做语义解析与逻辑资格审查，通过后才进入current_strength与D100。",
+      "priority": [
+        "硬规则",
+        "语义解析",
+        "机制可行性",
+        "current_strength对抗",
+        "意识保护资格",
+        "D100执行"
+      ],
+      "dice_limit": "D100不能跳过死机、意识保护或机制不成立的硬门。"
+    }
+  },
+  "terminology_cleanup": {
+    "recommended_runtime_split": {
+      "BalanceState": [
+        "no_balance",
+        "single_ghost_instability",
+        "partial_balance",
+        "dual_ghost_balance",
+        "stable_balance",
+        "multi_puzzle_conflict",
+        "high_quality_balance"
+      ],
+      "DeadlockState": [
+        "none",
+        "deadlock_candidate",
+        "rule_deadlock",
+        "revival_deadlock",
+        "global_deadlock",
+        "local_deadlock"
+      ]
+    },
+    "migration": "旧dual_ghost_deadlock/stable_deadlock如仅表示普通平衡，应迁移/兼容为balance语义；不得直接视为真正死机。",
+    "do_not_break_saves": true
+  },
+  "supernatural_plan_evaluator": {
+    "engine_name": "SupernaturalPlanEvaluator",
+    "ai_role": [
+      "解析玩家自然语言方案",
+      "识别参与实体",
+      "提取玩家声称的灵异对抗关系",
+      "提取意识保护来源",
+      "输出结构化PlanEvaluationInput",
+      "不得直接宣布规则成功"
+    ],
+    "rule_engine_role": [
+      "核验参与实体/资源真实存在",
+      "核验玩家实际持有或接触相关资源",
+      "核验机制是否作用于同一核心结果",
+      "核验是否存在持续闭锁",
+      "核验意识保护是否具体适用于该方案",
+      "核验current_strength执行资格",
+      "决定是否允许进入D100"
+    ],
+    "example_shape": {
+      "plan_goal": "deadlock_then_heteromorph",
+      "participants": [
+        "ghost_A",
+        "ghost_B",
+        "item_C"
+      ],
+      "claimed_interactions": [
+        {
+          "source": "ghost_A",
+          "target": "ghost_B",
+          "claimed_effect": "prevents_rule_completion"
+        }
+      ],
+      "claimed_consciousness_protection": {
+        "source": "item_C",
+        "effect": "preserve_human_memory"
+      }
+    }
+  },
+  "deadlock_logic_gate": {
+    "engine_name": "DeadlockLogicGate",
+    "checks": [
+      "至少两股真实灵异力量/机制参与",
+      "对抗作用于同一核心灵异结果",
+      "规则真实冲突，不是单纯数值接近",
+      "存在持续闭锁或循环矛盾可能",
+      "current_strength足以让逻辑成立的机制实际执行"
+    ],
+    "results": [
+      "invalid_logic",
+      "valid_but_strength_insufficient",
+      "eligible_for_execution"
+    ],
+    "invalid_logic_behavior": "不进入目标成功骰；若玩家实际可执行该行为，仍可结算失败与副作用，但不得泄露隐藏规律。"
+  },
+  "heteromorph_logic_gate": {
+    "engine_name": "HeteromorphLogicGate",
+    "requires": [
+      "deadlock_state已真实成立",
+      "human_memory_exists",
+      "consciousness_protection_mechanism_valid",
+      "保护覆盖转化关键阶段",
+      "人类意识尚未被覆盖/删除/替代",
+      "存在人类意识取得死机灵异结构主导权的逻辑路径"
+    ],
+    "not_automatically_valid": [
+      "仅memory标签",
+      "只能读取他人记忆",
+      "普通心理意志",
+      "D100极端成功"
+    ],
+    "results": [
+      "not_eligible",
+      "heteromorph_candidate",
+      "eligible_for_execution"
+    ]
+  },
+  "resolution_pipeline": [
+    "玩家自然语言提出方案",
+    "AI解析为结构化plan",
+    "使用GM hidden真实规则与当前世界状态执行DeadlockLogicGate",
+    "若invalid_logic：禁止目标成功，但允许行动失败/副作用",
+    "若逻辑成立：进入current_strength与机制执行资格",
+    "如果计划包含异类：必须先完成并写回DEADLOCK",
+    "执行HeteromorphLogicGate",
+    "只有deadlock已成立且意识保护成立，才允许异类D100",
+    "执行D100并结算执行质量",
+    "按阶段写回Character/Ghost状态",
+    "经过Knowledge/Visibility生成玩家可见结果",
+    "AI GM只叙述可见后果"
+  ],
+  "same_plan_phase_order": [
+    "BALANCE",
+    "DEADLOCK",
+    "CONSCIOUSNESS_PRESERVED",
+    "HETEROMORPH"
+  ],
+  "dice_policy": {
+    "rule": "骰子次数由方案复杂度决定。",
+    "simple": "逻辑门全部成立后，可用一次核心D100决定整个执行质量。",
+    "complex": "可分死机执行骰、意识保持骰、异类接管骰。",
+    "constraint": "后阶段必须以前阶段真实成立为前置。",
+    "extreme_success": "01不能把invalid_logic变成deadlock或heteromorph。",
+    "catastrophic_failure": "100可增加失衡、复苏、身体损伤、意识受损、反向占据等后果，但不能改变规则真相。"
+  },
+  "visibility": {
+    "rule": "PlanEvaluator可使用GM hidden做真实机制判断，但玩家反馈必须经过Visibility/Knowledge。",
+    "example": {
+      "gm_truth": "机制不匹配，无法形成闭锁。",
+      "player_visible": "你预想中的灵异对抗没有形成，另一股力量并未按你的设想停滞。"
+    },
+    "forbidden": [
+      "直接泄露隐藏杀人规律",
+      "直接告诉玩家具体hidden tag不匹配",
+      "把logic_invalid当成答案提示器"
+    ]
+  },
+  "transition_state_model": {
+    "field": "supernatural_transition_state",
+    "values": [
+      "normal_controller",
+      "balanced_controller",
+      "deadlock_candidate",
+      "deadlocked_controller",
+      "heteromorph_candidate",
+      "heteromorphic",
+      "failed_transition",
+      "lost"
+    ],
+    "allowed_core_path": [
+      "normal_controller -> balanced_controller",
+      "balanced_controller -> deadlock_candidate",
+      "deadlock_candidate -> deadlocked_controller",
+      "deadlocked_controller -> heteromorph_candidate",
+      "heteromorph_candidate -> heteromorphic"
+    ],
+    "forbidden": [
+      "balanced_controller -> heteromorphic",
+      "normal_controller -> heteromorphic",
+      "revival_100 -> heteromorphic_without_plan"
+    ]
+  },
+  "revival_100_relationship": {
+    "rule": "revival=100不是异类入口。",
+    "default": "无明确特殊override时进入普通厉鬼复苏/宿主死亡或替代结算。",
+    "heteromorph": "只能通过显式heteromorph_transition_attempt，且deadlock与consciousness protection均满足。"
+  },
+  "required_tests": [
+    {
+      "id": "DH01",
+      "expected": "stable_balance不能直接设置deadlock_state"
+    },
+    {
+      "id": "DH02",
+      "expected": "强度相等但机制无冲突 => invalid_logic"
+    },
+    {
+      "id": "DH03",
+      "expected": "真实规则闭锁且current足够 => eligible_for_execution"
+    },
+    {
+      "id": "DH04",
+      "expected": "invalid_logic + roll01仍不得死机"
+    },
+    {
+      "id": "DH05",
+      "expected": "死机前直接异类 => not_eligible"
+    },
+    {
+      "id": "DH06",
+      "expected": "memory tag但无意识保护功能 => protection fail"
+    },
+    {
+      "id": "DH07",
+      "expected": "deadlock + 有效意识保护 => heteromorph candidate/eligible"
+    },
+    {
+      "id": "DH08",
+      "expected": "同一计划日志顺序必须BALANCE->DEADLOCK->CONSCIOUSNESS_PRESERVED->HETEROMORPH"
+    },
+    {
+      "id": "DH09",
+      "expected": "deadlock成功但heteromorph失败时，前者仍保留"
+    },
+    {
+      "id": "DH10",
+      "expected": "revival=100无显式特殊路线时不得自动异类"
+    },
+    {
+      "id": "DH11",
+      "expected": "GM hidden可用于内部逻辑，但player-visible不泄漏"
+    },
+    {
+      "id": "DH12",
+      "expected": "逻辑错误方案仍可执行，但目标成功资格=false并正常结算副作用"
+    }
+  ],
+  "implementation_constraints": [
+    "本轮不实现完整RevivalEndpointEngine",
+    "不新增Scheduler/Hidden Roll/Event Clock/NPC Autonomy",
+    "不新增梦境/鬼域/交易系统",
+    "AI不能成为规则真源",
+    "tag不能替代具体机制审查",
+    "D100不能覆盖硬门",
+    "不破坏旧存档；枚举变更需兼容"
+  ],
+  "post_implementation_audit": {
+    "required": true,
+    "mode": "read_only",
+    "output_file": "seal_room_p3b2_deadlock_heteromorph_audit.json",
+    "must_stop_coding_before_audit": true,
+    "must_verify": [
+      "BalanceState与DeadlockState是否真正分离",
+      "旧普通balance枚举是否不会自动获得真正死机资格",
+      "DeadlockLogicGate是否检查真实机制冲突而非数值相等",
+      "PlanEvaluator是否只做语义解析/结构化而非直接决定成功",
+      "current_strength门是否位于机制门之后",
+      "heteromorph是否强制要求deadlock已经成立",
+      "意识保护是否检查具体机制适用性而不是memory tag",
+      "同一计划是否严格按BALANCE->DEADLOCK->HETEROMORPH写回",
+      "invalid_logic即使roll01是否仍不能成功",
+      "revival100是否不会自动转异类",
+      "玩家反馈是否不泄漏GM hidden",
+      "P2/P3-A/B冻结规则是否无回归"
+    ]
+  }
+}

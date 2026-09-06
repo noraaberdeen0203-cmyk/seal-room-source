@@ -1,0 +1,389 @@
+{
+  "document_type": "seal_room_p3b24_rare_action_integration_spec",
+  "project_name": "隔绝室",
+  "project_name_en": "Seal Room",
+  "target_version": "0.1.2-P3-B2.4-rare-action-integration",
+  "language": "zh-CN",
+  "purpose": "把P3-B2.3已经通过的范围重启、唯心Source Contact、SuppressionLock、CurseLink等runtime原语正式接入resolveAction主管道，并引入统一ActionTransaction与applyRevivalDelta，确保灵异代价真正写回世界状态且达到100时产生统一中断。",
+  "source_of_truth_priority": [
+    "本文件",
+    "seal_room_p3b23_rare_tag_runtime_spec.json",
+    "seal_room_rare_supernatural_tags_spec.json",
+    "seal_room_p3b2_deadlock_heteromorph_spec.json",
+    "seal_room_p3ab_fix1_spec.json",
+    "seal_room_p2_amendment01_p3ab_spec.json"
+  ],
+  "frozen_do_not_reopen": [
+    "P2 current-strength driving",
+    "contained ghost runtime freeze",
+    "P3 natural revival long_time_skip-only",
+    "BALANCE->DEADLOCK->CONSCIOUSNESS_PRESERVED->HETEROMORPH",
+    "rare tag thresholds 1500/2200/3000",
+    "area restart effective threshold 6800",
+    "高位鬼域=当前有效鬼域强度>=6800，不是额外tag/第二门槛",
+    "单体重启无需鬼域",
+    "临时跨6800必须支付major级P2即时复苏代价",
+    "Source Contact不能被strength或D100跳过"
+  ],
+  "new_action_types": [
+    {
+      "id": "area_restart",
+      "purpose": "执行范围重启",
+      "required_runtime": [
+        "AreaRestartGate",
+        "StackingEngine",
+        "ActionTransaction",
+        "applyRevivalDelta"
+      ]
+    },
+    {
+      "id": "apply_suppression",
+      "purpose": "尝试建立SuppressionLock",
+      "required_runtime": [
+        "suppression mechanism gate",
+        "current-strength opposition",
+        "SuppressionLock"
+      ]
+    },
+    {
+      "id": "release_suppression",
+      "purpose": "主动解除由行动者维持且允许主动解除的SuppressionLock",
+      "required_runtime": [
+        "SuppressionLock ownership/permission check"
+      ]
+    },
+    {
+      "id": "attach_curse",
+      "purpose": "通过合法媒介建立CurseLink",
+      "required_runtime": [
+        "medium validation",
+        "attachment condition",
+        "CurseLink"
+      ]
+    },
+    {
+      "id": "break_curse",
+      "purpose": "依据break_condition或特殊机制尝试解除CurseLink",
+      "required_runtime": [
+        "CurseLink",
+        "break mechanism"
+      ]
+    },
+    {
+      "id": "use_borrowed_supernatural",
+      "purpose": "使用CurseLink授予的部分借用灵异效果",
+      "required_runtime": [
+        "borrowed_supernatural_effects",
+        "ActionTransaction"
+      ]
+    },
+    {
+      "id": "establish_source_contact",
+      "purpose": "对唯心类源头执行媒介/机制动作并建立Source Contact",
+      "required_runtime": [
+        "source-contact",
+        "hidden/visibility"
+      ]
+    }
+  ],
+  "action_transaction": {
+    "name": "ActionTransaction",
+    "goal": "把门槛判断、资源/代价提交、D100与世界状态写回放进同一事务式结算，避免门函数给出cost但主管道未支付。",
+    "phases": [
+      "parse_and_target",
+      "hard_preconditions",
+      "mechanism_validation",
+      "strength_and_stacking",
+      "stage_costs_and_resources",
+      "commit_activation_costs",
+      "check_interrupts",
+      "d100_if_applicable",
+      "apply_effects",
+      "commit_post_effect_costs",
+      "final_interrupt_check",
+      "knowledge_visibility_output"
+    ],
+    "rules": {
+      "hard_gate_before_dice": true,
+      "cost_is_state_change": "任何已commit的灵异代价必须实际写回WorldState/CharacterState，不能只存在于返回值。",
+      "no_success_only_payment_default": "只要具体灵异/物品已经实际发动并产生使用代价，即使后续D100失败，已提交的activation cost也不退款。",
+      "no_double_commit": "同一cost id在一次transaction中只能提交一次。",
+      "rollback_policy": "只回滚尚未commit的staged变化；已触发的灵异使用代价、媒介消耗等不可因后续失败自动回滚。",
+      "visibility_last": "玩家可见叙事最后生成，不得反向改变判定。"
+    }
+  },
+  "revival_delta_engine": {
+    "name": "applyRevivalDelta",
+    "purpose": "所有即时复苏度变化统一入口，禁止各模块直接player.revival_degree += x。",
+    "signature_suggestion": {
+      "inputs": [
+        "character",
+        "delta",
+        "source",
+        "reason",
+        "transaction_id"
+      ],
+      "outputs": [
+        "previous_revival",
+        "new_revival",
+        "applied_delta",
+        "threshold_reached",
+        "interrupt"
+      ]
+    },
+    "rules": [
+      "revival内部保持既有小数精度策略；不得引入natural revival accumulator。",
+      "new_revival clamp到0~100。",
+      "如果由<100首次达到100，则threshold_reached=true。",
+      "达到100后返回revival_threshold interrupt。",
+      "不得在本轮自行完成完整RevivalEndpointEngine；只产生统一endpoint hook/pending endpoint状态。",
+      "后续transaction阶段默认停止，除非具体mechanism显式声明某effect与cost为simultaneous_atomic并已在同一步提交。"
+    ],
+    "direct_write_forbidden": [
+      "area_restart.ts直接加revival",
+      "suppression.ts直接加revival",
+      "curse-link.ts直接加revival",
+      "borrowed power直接改revival",
+      "未来其他Power使用逻辑绕过applyRevivalDelta"
+    ]
+  },
+  "area_restart_action": {
+    "action_type": "area_restart",
+    "pipeline": [
+      "确认行动者拥有/可合法调用鬼域+重启复合机制",
+      "确认鬼域当前可运行",
+      "调用StackingEngine得到native_effective_area_restart_strength",
+      "若native<6800，检查合法temporary amplifier及mechanism_match",
+      "若增幅后仍<6800则hard fail，不进D100",
+      "若依赖temporary amplifier跨过6800：激活增幅并commit major revival cost",
+      "通过applyRevivalDelta写回复苏度",
+      "若因此达到100：返回revival_threshold interrupt，默认不继续后续D100/effect",
+      "否则进入D100（如具体执行需要）",
+      "根据D100结算范围重启的执行质量/失败后果",
+      "写回restart effect"
+    ],
+    "temporary_amplifier": {
+      "cost_commit_timing": "on_activation_before_d100",
+      "major_min": 20,
+      "reason": "防止玩家反复免费尝试跨6800。",
+      "failure_cost": "若增幅已经激活，即使D100失败，major revival cost仍保留。",
+      "native_above_threshold": "若native effective本身>=6800，则不因范围重启门槛自动追加major cost；仍结算Power自身定义的正常使用代价。"
+    }
+  },
+  "suppression_actions": {
+    "apply_suppression": {
+      "pipeline": [
+        "验证source Power存在且有压制机制",
+        "验证target/scope",
+        "验证mechanism applies",
+        "结算任何activation cost",
+        "current-strength opposition",
+        "D100 if applicable",
+        "成功则create SuppressionLock",
+        "失败仍保留已commit activation cost与失败后果"
+      ],
+      "scope_hard_rule": "one_power只能封指定Power；whole_ghost必须由具体机制明确授权。"
+    },
+    "release_suppression": {
+      "rule": "只有source/owner或release_condition允许主动解除时才可解除；不能让任意角色删除他人SuppressionLock。",
+      "effect": "调用统一release逻辑并写回active=false/removed。"
+    },
+    "deadlock_integration": "active SuppressionLock可被PlanEvaluator作为死机候选资源，但DeadlockLogicGate必须继续独立验证同一核心结果、真实冲突与持续闭锁。"
+  },
+  "curse_actions": {
+    "attach_curse": {
+      "pipeline": [
+        "验证source/Power具有curse机制",
+        "验证medium非空且实际可用",
+        "验证attachment_condition",
+        "提交媒介/Power activation cost",
+        "D100 if applicable",
+        "成功创建CurseLink",
+        "失败不返还已commit的真实使用代价"
+      ]
+    },
+    "break_curse": {
+      "pipeline": [
+        "定位真实CurseLink",
+        "检查已满足break_condition或存在特殊break mechanism",
+        "hard mechanism gate",
+        "D100 if applicable",
+        "成功解除link"
+      ],
+      "hidden_rule": "玩家不知道真实break_condition时，只显示可见结果，不泄露GM hidden。"
+    },
+    "use_borrowed_supernatural": {
+      "hard_requirements": [
+        "存在active CurseLink",
+        "该link.effect_profile明确授予目标对应borrowed effect",
+        "borrowed effect仍在允许范围/持续窗口",
+        "不能越权调用源头Ghost的其他Power"
+      ],
+      "state_rule": "使用者不会因此自动成为ghost_controller/possessed。",
+      "cost_rule": "若borrowed effect有使用代价，必须通过ActionTransaction/applyRevivalDelta或对应资源提交。"
+    }
+  },
+  "source_contact_action": {
+    "action_type": "establish_source_contact",
+    "pipeline": [
+      "解析玩家声称的medium/动作/目标",
+      "验证现实中是否可执行",
+      "用GM hidden检查真实medium与mechanism是否匹配",
+      "逻辑不匹配但动作可执行时允许执行，并结算实际后果，不泄露hidden",
+      "逻辑匹配且执行成功时写source_contact_state=source_contact_established或contact_window_open",
+      "后续containment才能继续"
+    ],
+    "ai_boundary": "AI/Plan Interpreter只负责结构化玩家自然语言，不得自己写source_contact success；成功由规则/hidden mechanism gate决定。"
+  },
+  "cost_semantics": {
+    "categories": [
+      "activation_cost",
+      "resource_consumption",
+      "failure_cost",
+      "success_cost",
+      "post_effect_cost"
+    ],
+    "default_rule": "具体Power/Item必须声明cost timing；没有声明时禁止系统自行猜测。",
+    "temporary_area_restart_amplifier_exception": "跨6800的temporary amplifier固定使用activation_cost，先commit再D100。",
+    "principle": "灵异行动不是成功才付费；只要实际动用了具有代价的灵异，已发生的代价就必须保留。"
+  },
+  "visibility_and_hidden": {
+    "rule": "所有action最终玩家反馈必须经过Knowledge/Visibility。",
+    "examples": [
+      "Source Contact错误：只显示媒介/行动未产生预期接触，不公开真实媒介。",
+      "Break curse错误：只显示诅咒联系仍存在或异常加剧，不公开真实break_condition。",
+      "Suppression失败：只显示预想中的封锁没有形成或目标灵异继续运转，不公开隐藏Power结构。"
+    ]
+  },
+  "required_tests": [
+    {
+      "id": "RA01",
+      "setup": "area_restart native=6200，合法amp到6900，raw revival_cost=3",
+      "expected": "resolveAction实际通过applyRevivalDelta至少+20，不只是AreaRestartGate返回cost"
+    },
+    {
+      "id": "RA02",
+      "setup": "RA01但D100失败",
+      "expected": "已commit的major revival cost仍保留"
+    },
+    {
+      "id": "RA03",
+      "setup": "revival=85，跨6800增幅cost=20",
+      "expected": "applyRevivalDelta令revival=100并返回revival_threshold interrupt；默认不继续后续D100/restart effect"
+    },
+    {
+      "id": "RA04",
+      "setup": "area_restart native=6800，无temporary amp",
+      "expected": "不因6800门本身强制追加major cost，仅结算Power自身正常cost"
+    },
+    {
+      "id": "RA05",
+      "setup": "area_restart依赖无关Power凑强度",
+      "expected": "StackingEngine mechanism mismatch，hard fail，不进D100"
+    },
+    {
+      "id": "RA06",
+      "setup": "apply_suppression scope=one_power成功",
+      "expected": "resolveAction创建真实SuppressionLock，只封指定Power"
+    },
+    {
+      "id": "RA07",
+      "setup": "apply_suppression发动Power后D100失败",
+      "expected": "SuppressionLock不创建，但已发生的activation cost不退款"
+    },
+    {
+      "id": "RA08",
+      "setup": "release_suppression由无权限第三方发起",
+      "expected": "拒绝解除"
+    },
+    {
+      "id": "RA09",
+      "setup": "attach_curse medium缺失",
+      "expected": "hard fail，不创建CurseLink"
+    },
+    {
+      "id": "RA10",
+      "setup": "attach_curse medium有效且成功",
+      "expected": "resolveAction写入active CurseLink"
+    },
+    {
+      "id": "RA11",
+      "setup": "break_curse错误机制但动作现实可执行",
+      "expected": "允许尝试/产生后果，但不能解除link，不泄露真实break_condition"
+    },
+    {
+      "id": "RA12",
+      "setup": "普通人use_borrowed_supernatural调用link授予效果",
+      "expected": "效果可用，代价实际结算，仍不是ghost_controller"
+    },
+    {
+      "id": "RA13",
+      "setup": "普通人试图通过borrowed effect调用未授权源头Power",
+      "expected": "hard fail"
+    },
+    {
+      "id": "RA14",
+      "setup": "唯心establish_source_contact猜错medium但行为可执行",
+      "expected": "不建立Source Contact，只返回泛化可见结果"
+    },
+    {
+      "id": "RA15",
+      "setup": "唯心正确medium+mechanism成功",
+      "expected": "写入source_contact_established，后续containment可继续"
+    },
+    {
+      "id": "RA16",
+      "setup": "即时revival delta由任一新action产生",
+      "expected": "必须经过applyRevivalDelta，不存在模块直接写revival_degree"
+    },
+    {
+      "id": "RA17",
+      "setup": "同一transaction同一cost id被两个分支尝试commit",
+      "expected": "只结算一次"
+    },
+    {
+      "id": "RA18",
+      "setup": "SuppressionLock被用于deadlock plan",
+      "expected": "仍需DeadlockLogicGate；active lock不能自动等于deadlock"
+    }
+  ],
+  "regression_requirements": [
+    "RR01-RR15继续通过",
+    "RT01-RT18继续通过",
+    "DH01-DH12继续通过",
+    "P2 driving current-vs-current继续通过",
+    "P2 containment继续通过",
+    "P3 natural revival仅long_time_skip继续通过",
+    "不新增第二高位鬼域门槛",
+    "不新增短期复苏加速",
+    "hidden/player-visible隔离不回退"
+  ],
+  "implementation_constraints": [
+    "不实现完整RevivalEndpointEngine；只提供revival_threshold interrupt/hook",
+    "不实现UI大改",
+    "不接在线LLM Plan Interpreter",
+    "不实现Scheduler/Hidden Roll/Event Clock/NPC Autonomy",
+    "不实现完整鬼域碰撞",
+    "不实现完整意识战斗",
+    "不改稀有词条数字门槛",
+    "不改变6800范围重启门"
+  ],
+  "post_implementation_audit": {
+    "required": true,
+    "mode": "read_only",
+    "output_file": "seal_room_p3b24_rare_action_integration_audit.json",
+    "must_stop_coding_before_audit": true,
+    "must_verify": [
+      "resolveAction是否真正支持7类新action",
+      "area restart major revival cost是否真实写回玩家而非只返回",
+      "D100失败后已激活的灵异代价是否保留",
+      "applyRevivalDelta是否成为即时复苏唯一写入口",
+      "revival达到100是否统一产生interrupt",
+      "StackingEngine是否仍是范围重启唯一叠加入口",
+      "SuppressionLock/CurseLink是否真正写入WorldState",
+      "借用诅咒灵异是否不会赋予驭鬼身份",
+      "Source Contact action是否尊重GM hidden且不泄密",
+      "既有P2/P3/P3-B2/P3-B2.2/P3-B2.3是否无回归"
+    ]
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "document_type": "seal_room_p3b24_fix1_restart_semantics_audit",
+  "project_name": "隔绝室",
+  "project_version": "0.1.2-P3-B2.4-fix1-restart-semantics",
+  "audit_generated_at": "2026-09-06T21:25:00+08:00",
+  "audit_mode": "read_only",
+  "overall_verdict": {
+    "status": "pass",
+    "summary": "状态/时间型重启：self 无需鬼域/6800；外部默认 AreaRestartGate；external_single_exception 仅显式。source 自身 revival_state 默认剔除，独立外部源可回退目标复苏。memory/consciousness/causal 为 unsupported。即时复苏经 applyRevivalDelta，事务 cost_id 写入 save.action_transactions，reload 不重复扣费。force_drive 95→100 产生 revival_threshold。143 测全过。",
+    "score": 0.91
+  },
+  "source_of_truth": {
+    "documents_found": ["attachments/seal_room_p3b24_fix1_restart_semantics_spec.json"],
+    "latest_rules_used": true
+  },
+  "repository_inspection": {
+    "new_modules": ["src/lib/engine/restart-engine.ts", "src/lib/engine/restart.test.ts"],
+    "tests_failed": [],
+    "totals": "143 passed / 0 failed",
+    "typecheck": "clean"
+  },
+  "corrections_review": {
+    "targeting": {
+      "status": "done",
+      "expected_behavior": "self 无需 6800；外部默认范围门。",
+      "actual_behavior": "evaluateRestartRequest 路由 self/area/exception。",
+      "evidence": [{"file": "src/lib/engine/restart-engine.ts", "symbol": "evaluateRestartRequest", "detail": "target!=self => AreaRestartGate"}],
+      "test_evidence": ["RF01", "RF02", "RF03", "RF04", "RF05"],
+      "deviation": false,
+      "notes": ""
+    },
+    "self_exclusion": {
+      "status": "done",
+      "expected_behavior": "源不能刷自身 revival_state。",
+      "actual_behavior": "filterRestartDomains 自目标剔除。",
+      "evidence": [{"file": "src/lib/engine/restart-engine.ts", "symbol": "filterRestartDomains", "detail": "unless can_rewind_own_source_revival"}],
+      "test_evidence": ["RF06", "RF07", "RF08", "RF09"],
+      "deviation": false,
+      "notes": ""
+    },
+    "unsupported": {
+      "status": "done",
+      "expected_behavior": "memory/consciousness/causal unsupported。",
+      "actual_behavior": "route=unsupported。",
+      "evidence": [{"file": "src/lib/engine/restart-engine.ts", "symbol": "UNSUPPORTED_RESTART_DOMAINS", "detail": "three domains"}],
+      "test_evidence": ["RF10"],
+      "deviation": false,
+      "notes": ""
+    },
+    "unified_revival": {
+      "status": "done",
+      "expected_behavior": "即时路径走 applyRevivalDelta。",
+      "actual_behavior": "resolution cost.revival 经 applyRevivalDelta；natural-revival 保留。",
+      "evidence": [{"file": "src/lib/engine/resolution.ts", "symbol": "applyRevivalDelta", "detail": "replaces += cost.revival"}],
+      "test_evidence": ["RF11", "RF12"],
+      "deviation": false,
+      "notes": "settleNaturalRevival 仍直接写 100，符合专用公式例外。"
+    },
+    "tx_persist": {
+      "status": "done",
+      "expected_behavior": "save/load 同 tx+cost 不重复扣。",
+      "actual_behavior": "SaveData.action_transactions 最多 128 条。",
+      "evidence": [{"file": "src/lib/engine/revival-delta.ts", "symbol": "costAlreadyCommitted", "detail": "JSON clone replay"}],
+      "test_evidence": ["RF13"],
+      "deviation": false,
+      "notes": ""
+    }
+  },
+  "behavioral_tests": [
+    {"id": "RF01", "status": "pass"},
+    {"id": "RF02", "status": "pass"},
+    {"id": "RF03", "status": "pass"},
+    {"id": "RF04", "status": "pass"},
+    {"id": "RF05", "status": "pass"},
+    {"id": "RF06", "status": "pass"},
+    {"id": "RF07", "status": "pass"},
+    {"id": "RF08", "status": "pass"},
+    {"id": "RF09", "status": "pass"},
+    {"id": "RF10", "status": "pass"},
+    {"id": "RF11", "status": "pass", "pipeline": "resolveAction"},
+    {"id": "RF12", "status": "pass"},
+    {"id": "RF13", "status": "pass"},
+    {"id": "RF14", "status": "pass"}
+  ],
+  "regression_tests": {
+    "RA_RR_RT_DH": "pass",
+    "p2_pipeline": "pass"
+  },
+  "deviations": [],
+  "implementation_ambiguities": [
+    "范围重启互刷只验证逐次门允许，不模拟世界时钟回退。",
+    "external_single_exception 由调用方传入 rare 字段，本轮无 UI/Power 编辑器。"
+  ],
+  "technical_debt": [
+    "进程内 ephemeral Set 与 save 记录双轨。",
+    "完整时间快照未做。"
+  ],
+  "architecture_drift": {
+    "detected": false,
+    "items": ["1500/2200/3000/6800 未改", "无第二高位鬼域阈值"]
+  },
+  "freeze_status": {
+    "p2_base": "frozen",
+    "p3_b24_actions": "frozen",
+    "p3_b24_fix1": "applied"
+  },
+  "next_required_work": [
+    {"priority": "P3", "title": "RevivalEndpointEngine", "reason": "仅 hook", "blocking": false}
+  ],
+  "final_assessment": "Fix1 重启语义与统一即时复苏写入口已落地，RF01-RF14 与既有回归通过。建议冻结目标路由与自身复苏排除，不在本层做记忆/因果重启。"
+}

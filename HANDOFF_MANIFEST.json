@@ -1,0 +1,49 @@
+{
+  "project": "隔绝室",
+  "version": "0.1.2-P3-B2.4-fix2-restart-trust-boundary",
+  "handoff_type": "full_source",
+  "default_branch": "main",
+  "entry_points": [
+    "src/routes/index.tsx",
+    "src/lib/engine/resolution.ts",
+    "src/lib/store.ts"
+  ],
+  "test_commands": ["npm test"],
+  "build_commands": ["npm run build"],
+  "typecheck_commands": ["npm run typecheck"],
+  "latest_audit": "docs/audits/seal_room_p3b24_fix2_restart_trust_boundary_audit.json",
+  "latest_spec": "docs/specs/seal_room_p3b24_fix2_restart_trust_boundary_spec.json",
+  "frozen_layers": [
+    "P2 Base",
+    "P2 Amendment 01",
+    "P3-A/B",
+    "P3-B2 Deadlock/Heteromorph",
+    "P3-B2.2 Rare Tags",
+    "P3-B2.3 Rare Tag Runtime",
+    "P3-B2.4 Rare Actions",
+    "P3-B2.4 Restart Semantics",
+    "P3-B2.4 Restart Trust Boundary"
+  ],
+  "known_incomplete_features": [
+    "RevivalEndpointEngine",
+    "full world-state rewind",
+    "memory/consciousness/causal restart",
+    "online LLM Plan Interpreter",
+    "Scheduler",
+    "Hidden Roll",
+    "Event Clock",
+    "NPC Autonomy",
+    "full ghost-domain collision",
+    "full consciousness combat",
+    "full rare-action UI wiring"
+  ],
+  "known_technical_debt": [
+    "ephemeral transaction Set plus save.action_transactions dual track",
+    "area restart does not rewind full WorldState",
+    "RareActionPayload still accepts forbidden authority fields for forgery tests",
+    "natural revival writes revival_degree directly by spec exception"
+  ],
+  "required_node_version": "22",
+  "package_manager": "npm",
+  "lockfile": "package-lock.json"
+}

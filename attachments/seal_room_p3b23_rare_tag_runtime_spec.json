@@ -1,0 +1,312 @@
+{
+  "document_type": "seal_room_p3b23_rare_tag_runtime_spec",
+  "project_name": "隔绝室",
+  "project_name_en": "Seal Room",
+  "target_version": "0.1.2-P3-B2.3-rare-tag-runtime",
+  "language": "zh-CN",
+  "purpose": "在已冻结的P2/P3-A/B/P3-B2/P3-B2.2规则基础上，补齐稀有高位灵异词条的runtime接线：范围重启6800统一门、临时增幅即时复苏代价硬门、唯心Source Contact、压制SuppressionLock、诅咒CurseLink。不得回改稀有词条门槛数字。",
+  "source_of_truth_priority": [
+    "本文件",
+    "seal_room_rare_supernatural_tags_spec.json",
+    "seal_room_p3b2_deadlock_heteromorph_spec.json",
+    "seal_room_p3ab_fix1_spec.json",
+    "seal_room_p2_amendment01_p3ab_spec.json"
+  ],
+  "frozen_rules": {
+    "rare_tag_thresholds": {
+      "tier_1_1500": [
+        "必死",
+        "压制",
+        "诅咒"
+      ],
+      "tier_2_2200": [
+        "鬼域",
+        "意识"
+      ],
+      "tier_3_3000": [
+        "唯心",
+        "重启"
+      ]
+    },
+    "domain": "鬼域表现继续强绑定current_strength。",
+    "area_restart": "范围重启必须同时具备鬼域+重启，且当前有效复合灵异强度>=6800。",
+    "high_order_domain_definition": "高位鬼域不是额外tag或独立门槛；当对应鬼域当前有效灵异强度达到6800，即视为高位鬼域。",
+    "single_restart": "单体/自身重启不要求鬼域。",
+    "driving": "普通驾驭仍使用current_strength/current-equivalent opposition。",
+    "natural_revival": "自然复苏仍只在long_time_skip结算。",
+    "heteromorph": "异类仍必须遵循BALANCE->DEADLOCK->CONSCIOUSNESS_PRESERVED->HETEROMORPH。"
+  },
+  "runtime_tasks": {
+    "R01_area_restart_unified_6800_gate": {
+      "priority": "P0",
+      "required_behavior": [
+        "删除任何额外HIGH_ORDER_DOMAIN_THRESHOLD常量或独立高位鬼域tag。",
+        "高位鬼域的定义就是：具备鬼域且当前有效鬼域强度>=6800。",
+        "范围重启仍必须具备【鬼域】与【重启】。",
+        "范围重启必须检查同一有效复合机制的effective_area_restart_strength>=6800。",
+        "不能只检查max_strength>=6800。",
+        "不能把角色总灵异强度直接当成area restart effective strength。"
+      ],
+      "stacking": {
+        "rule": "必须统一复用现有StackingEngine；cooperativeOpposition若为StackingEngine内部策略可保留，否则必须接回统一StackingEngine。",
+        "mechanism_match_required": true,
+        "forbidden": "无关Power/Ghost原始数值线性相加。"
+      }
+    },
+    "R02_temporary_amplifier_major_revival_cost": {
+      "priority": "P0",
+      "problem": "当前revival_cost若完全由调用方传入，可能通过0/3等小值绕过“大幅复苏代价”。",
+      "required_behavior": {
+        "cross_threshold_condition": "当native_effective_area_restart_strength<6800，且依赖temporary amplifier后达到>=6800时，必须触发major immediate revival cost。",
+        "cost_class": "major",
+        "recommended_minimum": 20,
+        "tuning_rule": "MAJOR_REVIVAL_COST_MIN作为集中调参常量，第一版建议20；具体物品/Power可定义更高成本。",
+        "validation": "调用方给出的revival_cost若低于MAJOR_REVIVAL_COST_MIN，应提升至最低值或直接判配置非法；不得静默按低值结算。",
+        "cost_timing": "范围重启执行后立即结算P2即时revival_degree增加。",
+        "forbidden": [
+          "revival_stress",
+          "24小时复苏加速",
+          "小时级natural revival倍率",
+          "以未来成本替代即时复苏代价"
+        ]
+      }
+    },
+    "R03_idealistic_source_contact_runtime": {
+      "priority": "P0",
+      "goal": "把【唯心】正式接入P2关押流程。",
+      "state": {
+        "suggested_field": "source_contact_state",
+        "values": [
+          "unknown",
+          "suspected",
+          "identified_medium",
+          "contact_window_open",
+          "source_contact_established",
+          "contact_lost"
+        ]
+      },
+      "hard_rule": "唯心类源头未建立source_contact_established前，不允许进入真实源头的接触-对抗-关押硬门。",
+      "required_pipeline": [
+        "识别/推断媒介",
+        "执行具体mechanism要求的正确行动",
+        "建立Source Contact或开启接触窗口",
+        "只有此后才允许P2 containment读取真实source",
+        "再进入现实/窗口/隔离/机制/strength硬门",
+        "最终仍要求containment_effective_strength > source.current_strength"
+      ],
+      "strength_limit": "无论玩家strength多高，都不能跳过Source Contact。",
+      "contact_loss": "若媒介断裂、窗口关闭或规则条件失效，可使Source Contact失效并阻断后续关押。",
+      "hidden": "真实媒介与source_contact条件可以属于GM hidden；玩家只看到已知线索和现象。"
+    },
+    "R04_suppression_lock_runtime": {
+      "priority": "P1",
+      "goal": "把【压制】从数据结构变成实际运行状态。",
+      "state": {
+        "name": "SuppressionLock",
+        "fields": [
+          "source_id",
+          "target_id",
+          "scope",
+          "target_power_id?",
+          "target_rule_id?",
+          "target_tag?",
+          "effective_strength",
+          "applied_at",
+          "release_condition",
+          "active"
+        ]
+      },
+      "scope_options": [
+        "one_power",
+        "one_killing_rule",
+        "one_tag",
+        "whole_ghost"
+      ],
+      "application_flow": [
+        "确认suppression mechanism适用",
+        "计算current-strength-based suppression opposition",
+        "必要时进入D100执行质量",
+        "成功后创建SuppressionLock",
+        "被锁scope在active期间不得正常运行",
+        "达到release_condition后解除"
+      ],
+      "hard_rule": "压制成功只能封锁规则定义的scope，不得默认封整只鬼。",
+      "deadlock_relation": "SuppressionLock可以成为DeadlockLogicGate的候选机制，但不能仅因存在压制tag就自动判死机。"
+    },
+    "R05_curse_link_runtime": {
+      "priority": "P1",
+      "goal": "把【诅咒】从数据结构变成实际持续灵异联系。",
+      "state": {
+        "name": "CurseLink",
+        "fields": [
+          "link_id",
+          "source_id",
+          "target_id",
+          "medium",
+          "attachment_condition",
+          "effect_profile",
+          "break_condition",
+          "transmissible",
+          "active",
+          "created_at"
+        ]
+      },
+      "required_behavior": [
+        "无媒介则不能建立诅咒。",
+        "媒介可为物质、信息、感官、记忆、关系等，不限定物理物品。",
+        "建立后即使目标远离源头，只要break_condition未满足，link仍可持续。",
+        "媒介/关系断裂且满足break_condition时解除CurseLink。",
+        "transmissible=true时才允许向新目标传播。",
+        "诅咒可令非驭鬼者被动承载或主动借用部分灵异效果；这不应把其状态改成possessed/driver。"
+      ],
+      "borrowed_power": {
+        "suggested_state": "borrowed_supernatural_effects",
+        "rule": "借用效果的范围、代价和持续由CurseLink.effect_profile决定。",
+        "restriction": "不能因为borrowed effect就获得源头GhostEntity完整Power或驾驭资格。"
+      }
+    }
+  },
+  "runtime_ordering": {
+    "containment_with_idealistic": [
+      "Visible phenomenon",
+      "Medium inference",
+      "Source Contact action",
+      "Source Contact established",
+      "P2 source resolution",
+      "Containment hard gates",
+      "D100 execution quality",
+      "Containment result"
+    ],
+    "suppression": [
+      "mechanism applies",
+      "current-strength opposition",
+      "D100 if applicable",
+      "SuppressionLock create",
+      "runtime block",
+      "release"
+    ],
+    "curse": [
+      "medium valid",
+      "attachment condition",
+      "CurseLink create",
+      "effect runtime",
+      "spread if transmissible",
+      "break condition",
+      "unlink"
+    ]
+  },
+  "required_tests": [
+    {
+      "id": "RR01",
+      "setup": "存在鬼域+重启，effective=6799",
+      "expected": "范围重启不可用"
+    },
+    {
+      "id": "RR02",
+      "setup": "存在鬼域+重启，effective=6800",
+      "expected": "范围重启硬门通过；不存在第二个高位鬼域阈值"
+    },
+    {
+      "id": "RR03",
+      "setup": "max>=6800但current/effective<6800",
+      "expected": "范围重启不可用"
+    },
+    {
+      "id": "RR04",
+      "setup": "native=6200，合法临时增幅至6900，调用方revival_cost=3",
+      "expected": "不得按3结算；至少按MAJOR_REVIVAL_COST_MIN或判配置非法"
+    },
+    {
+      "id": "RR05",
+      "setup": "native=6200，非法无关增幅使总数>6800",
+      "expected": "mechanism mismatch，不能范围重启"
+    },
+    {
+      "id": "RR06",
+      "setup": "唯心鬼已发现现象但未建立Source Contact，玩家strength=9000",
+      "expected": "不能进入真实源头关押强度硬门"
+    },
+    {
+      "id": "RR07",
+      "setup": "唯心鬼通过正确媒介建立Source Contact",
+      "expected": "可以继续进入P2 containment hard gates"
+    },
+    {
+      "id": "RR08",
+      "setup": "Source Contact建立后媒介断裂且规则定义contact_lost",
+      "expected": "后续真实源头接触被阻断"
+    },
+    {
+      "id": "RR09",
+      "setup": "压制仅scope=one_power",
+      "expected": "只封指定Power，其他Power继续运行"
+    },
+    {
+      "id": "RR10",
+      "setup": "SuppressionLock达到release_condition",
+      "expected": "自动解除，目标Power恢复"
+    },
+    {
+      "id": "RR11",
+      "setup": "诅咒无medium",
+      "expected": "不能创建CurseLink"
+    },
+    {
+      "id": "RR12",
+      "setup": "诅咒medium有效，远离源头但break_condition未满足",
+      "expected": "CurseLink继续active"
+    },
+    {
+      "id": "RR13",
+      "setup": "CurseLink transmissible=false",
+      "expected": "不得传播到新目标"
+    },
+    {
+      "id": "RR14",
+      "setup": "普通人通过CurseLink借用灵异效果",
+      "expected": "获得borrowed effect但不变成驭鬼者/possessed"
+    },
+    {
+      "id": "RR15",
+      "setup": "SuppressionLock作为玩家死机方案资源",
+      "expected": "PlanEvaluator只把它当候选机制，DeadlockLogicGate仍需验证持续闭锁"
+    }
+  ],
+  "regression_tests": [
+    "RT01-RT18全部继续通过",
+    "DH01-DH12全部继续通过",
+    "P2 containment hard gate不变",
+    "current-strength driving不变",
+    "P3 natural revival long_time_skip-only不变",
+    "hidden/player-visible隔离不变"
+  ],
+  "implementation_constraints": [
+    "不新增第二个高位鬼域tag",
+    "不新增独立HIGH_ORDER_DOMAIN_THRESHOLD",
+    "不修改6800范围重启硬门",
+    "不回改1500/2200/3000稀有词条门槛",
+    "不实现完整鬼域碰撞系统",
+    "不实现完整意识战斗系统",
+    "不实现RevivalEndpointEngine",
+    "不实现Scheduler/Hidden Roll/Event Clock/NPC Autonomy",
+    "不新增短期复苏加速"
+  ],
+  "post_implementation_audit": {
+    "required": true,
+    "mode": "read_only",
+    "output_file": "seal_room_p3b23_rare_tag_runtime_audit.json",
+    "must_stop_coding_before_audit": true,
+    "must_verify": [
+      "是否删除/未新增第二个高位鬼域阈值",
+      "范围重启是否仍以effective>=6800为唯一强度线",
+      "StackingEngine是否为范围重启唯一叠加入口",
+      "临时跨6800是否无法用低revival_cost绕过major代价",
+      "唯心Source Contact是否真正进入containment前置",
+      "strength是否无法跳过Source Contact",
+      "SuppressionLock是否按scope实际封锁并可解除",
+      "CurseLink是否强制medium且可持续/断裂/传播",
+      "普通人借用诅咒灵异是否不会被误标为驭鬼者",
+      "P2/P3/P3-B2/P3-B2.2所有冻结规则是否无回归"
+    ]
+  }
+}

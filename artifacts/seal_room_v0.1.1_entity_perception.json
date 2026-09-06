@@ -1,0 +1,406 @@
+{
+  "document_type": "design_patch",
+  "project_name": "隔绝室",
+  "version": "0.1.1",
+  "language": "zh-CN",
+  "generated_at": "2026-09-06T08:56:00+08:00",
+  "supersedes": {
+    "item": "P1_entity_kinds_and_false_source_ux",
+    "from": "seal_room_status_review.json",
+    "change": "真实 entity_kind 从玩家界面移除，仅保留为 GM hidden + 规则引擎输入"
+  },
+  "core_principle": {
+    "id": "perception_lock",
+    "name": "对象认知锁定",
+    "rule": "玩家必须选择可见行动目标，但系统不得告知该目标的真实类型。true_entity_kind 属于 gm_hidden_context，只给规则引擎、GM 面板和存档 hidden 字段使用。",
+    "player_sees": [
+      "visible_name",
+      "scene_description",
+      "visible_anomaly",
+      "confirmed_clues",
+      "suspected_rules",
+      "action_consequences"
+    ],
+    "player_must_infer": [
+      "source_entity",
+      "medium",
+      "projection",
+      "ghost_slave",
+      "phenomenon",
+      "unknown"
+    ],
+    "forbidden_on_player_ui": [
+      "true_entity_kind",
+      "linked_source_id",
+      "hidden_properties",
+      "interaction_rules.hidden_outcomes",
+      "GM 标签如「源头」「投影」「鬼奴」作为对象类型徽章"
+    ]
+  },
+  "difficulty": {
+    "field": "save.difficulty",
+    "default": "standard",
+    "modes": [
+      {
+        "id": "easy",
+        "label": "低难度",
+        "player_hints": true,
+        "warn_before_contain_non_source": true,
+        "hint_not_necessarily_source": true,
+        "fail_reveals": "soft_type_hint",
+        "ai_may_say": ["该目标未必是源头", "隔绝后异常没有真正停止"]
+      },
+      {
+        "id": "standard",
+        "label": "标准难度",
+        "player_hints": false,
+        "warn_before_contain_non_source": false,
+        "hint_not_necessarily_source": false,
+        "fail_reveals": "consequence_plus_clue",
+        "ai_may_say": ["只描述现象与部分线索", "不点明对象类型"]
+      },
+      {
+        "id": "hard",
+        "label": "高难度",
+        "player_hints": false,
+        "warn_before_contain_non_source": false,
+        "hint_not_necessarily_source": false,
+        "fail_reveals": "consequence_only",
+        "ai_may_say": ["只描述后果", "不给类型判断，不给关错警告"]
+      }
+    ]
+  },
+  "entity_schema": {
+    "id": "string",
+    "visible_name": "string",
+    "visibility": "known|partially_known|hidden",
+    "location_id": "string",
+    "present": "boolean",
+    "player_visible": {
+      "appearance": "string",
+      "anomaly": "string",
+      "last_observed": "string",
+      "known_facts": ["string"]
+    },
+    "player_assessment": {
+      "suspected_kind": "source_entity|medium|projection|ghost_slave|phenomenon|unknown|null",
+      "note": "string",
+      "updated_at": "string"
+    },
+    "revealed_properties": ["string"],
+    "gm_hidden": {
+      "true_entity_kind": "source_entity|medium|projection|ghost_slave|phenomenon|unknown",
+      "linked_source_id": "string|null",
+      "in_reality": "real|partially_real|not_in_reality|unknown",
+      "hidden_properties": ["string"],
+      "interaction_rules": {
+        "observe": { "visible_outcome": "string", "hidden_outcome": "string", "reveal_on": ["string"] },
+        "attack": { "visible_outcome": "string", "hidden_outcome": "string", "kills": "never|if_ghost_slave|never_source" },
+        "use_power": { "visible_outcome": "string", "hidden_outcome": "string", "mechanism_needed": ["string"] },
+        "contain": {
+          "if_true_source": "may_attempt_if_reality_and_window_and_gold",
+          "if_not_source": "event_not_resolved",
+          "visible_outcome_by_difficulty": {
+            "easy": "string",
+            "standard": "string",
+            "hard": "string"
+          },
+          "hidden_outcome": "string"
+        }
+      }
+    }
+  },
+  "ui_contract": {
+    "target_picker": {
+      "required_for": ["contain", "observe", "use_power", "attack", "drive_or_bind"],
+      "options_source": "当前地点 player-visible entities，按 visible_name 列出",
+      "option_fields_shown": ["visible_name", "player_visible.anomaly", "player_assessment.suspected_kind"],
+      "option_fields_hidden": ["gm_hidden"],
+      "allow_free_text": true,
+      "free_text_label": "其他可见目标",
+      "must_not_list_true_kind": true
+    },
+    "suspected_kind_field": {
+      "id": "player_assessment.suspected_kind",
+      "optional": true,
+      "label": "你的判断",
+      "options": [
+        { "value": "source_entity", "label": "我认为是源头" },
+        { "value": "medium", "label": "我认为是媒介" },
+        { "value": "projection", "label": "我认为是投影" },
+        { "value": "ghost_slave", "label": "我认为是鬼奴" },
+        { "value": "phenomenon", "label": "我认为是灵异现象" },
+        { "value": "unknown", "label": "我不确定" }
+      ],
+      "note": "该字段只写入 player_assessment，不改 true_entity_kind，也不参与关押成功判定"
+    },
+    "gm_panel": {
+      "may_show": ["true_entity_kind", "linked_source_id", "in_reality", "hidden_properties", "interaction_rules"],
+      "requires": "save.gm_mode === true"
+    },
+    "player_panels_forbidden_copy": [
+      "不得把 true_entity_kind 渲染成徽章、副标题或筛选标签",
+      "不得在建议行动里写「关押源头」这类已定性的句子",
+      "建议行动应写可见目标：门外人影、门缝里的声音、异常录音"
+    ]
+  },
+  "resolution_changes": {
+    "containment": {
+      "target_required": true,
+      "success_requires": [
+        "target.gm_hidden.true_entity_kind === source_entity",
+        "target.gm_hidden.in_reality === real",
+        "window_known",
+        "gold_covers",
+        "action_does_not_escalate_worse"
+      ],
+      "if_wrong_target": {
+        "event.status": "must_not_become_resolved",
+        "preferred_status": ["escaped", "active", "suppressed"],
+        "clock": "apply 关押媒介 / 关押投影 / 关押鬼奴 对应 instability_delta",
+        "player_assessment": "不自动纠正。高难度甚至不提示判断错误"
+      },
+      "player_guess_does_not_matter": true,
+      "ghost_slave_may_be_destroyed": true,
+      "source_may_never_be_killed": true
+    },
+    "observe": {
+      "may_add_revealed_properties": true,
+      "may_add_suspected_rule": true,
+      "must_not_print_true_entity_kind": true
+    },
+    "attack": {
+      "on_source": "无效或刺激规律，不能杀死",
+      "on_ghost_slave": "可以打散，事件不结束",
+      "on_projection": "打空，可能复制或转移",
+      "on_medium": "可能切断一条传播，也可能把媒介变成新锚点"
+    }
+  },
+  "contain_fail_copy": {
+    "easy": {
+      "projection": "人影被隔绝了，但真正的敲门声似乎没有停止。这个目标可能不是源头。",
+      "medium": "你封住了声音经过的那扇门。别的门还在响。这个目标可能只是媒介。",
+      "ghost_slave": "那个还在走动的人倒下了。规律没有停。他恐怕不是源头。",
+      "phenomenon": "异常被压了一下，很快以另一种形式回来。你隔绝的恐怕只是现象。"
+    },
+    "standard": {
+      "projection": "黄金袋收紧，人影塌了下去。楼道安静了三秒。随后，隔壁门外传来了新的敲门声。",
+      "medium": "门被金箔贴死。贴住的那一侧不再响。下一层的门铃却自己响了起来。",
+      "ghost_slave": "人倒下去，像被抽走了什么。走廊里的敲击声没有跟着停。",
+      "phenomenon": "积水被盖上金箔后干了一圈。干痕边缘又渗出新的湿意。"
+    },
+    "hard": {
+      "projection": "你关上黄金袋。三秒后，另一扇门响了。",
+      "medium": "金箔贴上。别的地方开始响。",
+      "ghost_slave": "人停了。声音没有。",
+      "phenomenon": "你处理完眼前的东西。它换了一种出现方式。"
+    }
+  },
+  "ai_gm_constraints": {
+    "never_output_unless_revealed": [
+      "true_entity_kind",
+      "linked_source_id",
+      "hidden_properties",
+      "「这是投影/源头/鬼奴」的定性句"
+    ],
+    "may_output": [
+      "visible_name",
+      "player_visible.*",
+      "revealed_properties",
+      "contain/attack/observe 的可见后果",
+      "按 difficulty 选择的 fail copy"
+    ],
+    "guess_field": "可复述玩家的 suspected_kind，但必须标明这是玩家自己的判断，不是结论"
+  },
+  "demo_entities": [
+    {
+      "id": "tgt_door_shadow",
+      "visible_name": "门外人影",
+      "location_id": "loc_1704",
+      "player_visible": {
+        "appearance": "门缝里站着一个不像会离开的轮廓。",
+        "anomaly": "人影不移动，呼吸声却像贴在门板上。",
+        "known_facts": ["有人说 1704 的住户还在门后。"]
+      },
+      "player_assessment": { "suspected_kind": null, "note": "" },
+      "revealed_properties": [],
+      "gm_hidden": {
+        "true_entity_kind": "projection",
+        "linked_source_id": "ghost_knock",
+        "in_reality": "not_in_reality",
+        "hidden_properties": ["门后没有人体。这是应门规律投出的残影。"],
+        "interaction_rules": {
+          "contain": {
+            "if_not_source": "event_not_resolved",
+            "visible_outcome_by_difficulty": {
+              "easy": "人影被隔绝了，但真正的敲门声似乎没有停止。这个目标可能不是源头。",
+              "standard": "黄金袋收紧，人影塌了下去。楼道安静了三秒。随后，隔壁门外传来了新的敲门声。",
+              "hard": "你关上黄金袋。三秒后，另一扇门响了。"
+            },
+            "hidden_outcome": "只关押了投影。源头换门。事件 status 保持 active 或转为 escaped。"
+          }
+        }
+      }
+    },
+    {
+      "id": "tgt_knock_sound",
+      "visible_name": "门缝里的声音",
+      "location_id": "loc_alley",
+      "player_visible": {
+        "appearance": "三下，停半拍，再两下。",
+        "anomaly": "声音有门，却对不上任何一只手。",
+        "known_facts": ["监控在敲门那一秒失效。"]
+      },
+      "player_assessment": { "suspected_kind": null, "note": "" },
+      "revealed_properties": [],
+      "gm_hidden": {
+        "true_entity_kind": "medium",
+        "linked_source_id": "ghost_knock",
+        "in_reality": "partially_real",
+        "hidden_properties": ["声音是媒介。回应声音即让规律成立。"],
+        "interaction_rules": {
+          "contain": {
+            "if_not_source": "event_not_resolved",
+            "visible_outcome_by_difficulty": {
+              "easy": "你封住了声音经过的那扇门。别的门还在响。这个目标可能只是媒介。",
+              "standard": "门被金箔贴死。贴住的那一侧不再响。下一层的门铃却自己响了起来。",
+              "hard": "金箔贴上。别的地方开始响。"
+            },
+            "hidden_outcome": "切断一条媒介，源头改走其他门。"
+          }
+        }
+      }
+    },
+    {
+      "id": "tgt_zhou",
+      "visible_name": "被标记的住户",
+      "location_id": "loc_alley",
+      "player_visible": {
+        "appearance": "周晚在一层值班室抽烟，喉结上有浅疤。",
+        "anomaly": "被问到敲门时，他会先点一下头。",
+        "known_facts": ["他管这栋楼十二年。", "他说 1704 的住户自己搬走了。"]
+      },
+      "player_assessment": { "suspected_kind": null, "note": "" },
+      "revealed_properties": [],
+      "gm_hidden": {
+        "true_entity_kind": "medium",
+        "linked_source_id": "ghost_knock",
+        "in_reality": "real",
+        "hidden_properties": ["他已应过一次门，是活媒介，不是源头，也还不是鬼奴。"],
+        "interaction_rules": {
+          "contain": {
+            "if_not_source": "event_not_resolved",
+            "hidden_outcome": "关押活人媒介会造成社会暴露上升，源头仍在。"
+          }
+        }
+      }
+    },
+    {
+      "id": "tgt_recorder",
+      "visible_name": "异常录音",
+      "location_id": "loc_safehouse",
+      "player_visible": {
+        "appearance": "旧录音笔。回放时有一段对不上现场的敲击。",
+        "anomaly": "回放第二遍时，敲击会多一下。",
+        "known_facts": ["这是你自己带来的。"]
+      },
+      "player_assessment": { "suspected_kind": null, "note": "" },
+      "revealed_properties": [],
+      "gm_hidden": {
+        "true_entity_kind": "medium",
+        "linked_source_id": "ghost_knock",
+        "in_reality": "real",
+        "hidden_properties": ["被录下的敲门会变成新的门。"],
+        "interaction_rules": {
+          "contain": {
+            "if_not_source": "event_not_resolved",
+            "hidden_outcome": "毁掉或封存录音只能减少一条复制，不能结束事件。"
+          }
+        }
+      }
+    },
+    {
+      "id": "tgt_puddle",
+      "visible_name": "走廊积水",
+      "location_id": "loc_alley",
+      "player_visible": {
+        "appearance": "17 层地毯是湿的，天花没有漏点。",
+        "anomaly": "积水轮廓有时像鞋印，有时又摊开。",
+        "known_facts": ["物业把失踪写成漏水。"]
+      },
+      "player_assessment": { "suspected_kind": null, "note": "" },
+      "revealed_properties": [],
+      "gm_hidden": {
+        "true_entity_kind": "phenomenon",
+        "linked_source_id": "ghost_knock",
+        "in_reality": "partially_real",
+        "hidden_properties": ["积水是规律留下的痕迹，不是源头。"],
+        "interaction_rules": {
+          "contain": {
+            "if_not_source": "event_not_resolved",
+            "visible_outcome_by_difficulty": {
+              "easy": "异常被压了一下，很快以另一种形式回来。你隔绝的恐怕只是现象。",
+              "standard": "积水被盖上金箔后干了一圈。干痕边缘又渗出新的湿意。",
+              "hard": "你处理完眼前的东西。它换了一种出现方式。"
+            },
+            "hidden_outcome": "现象被覆盖后改换表现，事件不结束。"
+          }
+        }
+      }
+    },
+    {
+      "id": "tgt_knock_source",
+      "visible_name": "应门这件事本身",
+      "location_id": "loc_alley",
+      "visibility": "hidden",
+      "player_visible": {
+        "appearance": "",
+        "anomaly": "",
+        "known_facts": []
+      },
+      "player_assessment": { "suspected_kind": null, "note": "" },
+      "revealed_properties": [],
+      "gm_hidden": {
+        "true_entity_kind": "source_entity",
+        "linked_source_id": "ghost_knock",
+        "in_reality": "partially_real",
+        "hidden_properties": ["源头是回应敲门这个动作，不是任何一具身体。需先被强制现实化才能关押。"],
+        "interaction_rules": {
+          "contain": {
+            "if_true_source": "may_attempt_if_reality_and_window_and_gold",
+            "hidden_outcome": "未现实化前关押必然失败。满足揭示条件后，可见名可变为玩家能选的目标。"
+          }
+        }
+      }
+    }
+  ],
+  "save_fields_added": {
+    "difficulty": "easy|standard|hard",
+    "entities": "entity_schema[]",
+    "last_target_id": "string|null"
+  },
+  "acceptance": [
+    { "id": "A1", "text": "玩家界面默认不显示 true_entity_kind", "required": true },
+    { "id": "A2", "text": "GM 面板在 gm_mode 下可以显示 true_entity_kind", "required": true },
+    { "id": "A3", "text": "玩家可以记录 suspected_kind，且该字段不覆盖真实类型", "required": true },
+    { "id": "A4", "text": "关押必须选择具体可见目标，而不是选择真实类型", "required": true },
+    { "id": "A5", "text": "关押错误对象时事件不得 resolved", "required": true },
+    { "id": "A6", "text": "easy/standard/hard 三档提示程度不同，且文案不在高难度点明类型", "required": true },
+    { "id": "A7", "text": "AI GM 不得泄露 hidden true_entity_kind，除非对应 reveal_condition 已满足", "required": true }
+  ],
+  "implementation_hooks": {
+    "types": "在 Character/Event 之外新增 VisibleTarget / SceneEntity",
+    "containment.evaluateContainment": "改为接收 target_id，读取 target.gm_hidden.true_entity_kind，禁止用玩家 suspected_kind 当成功条件",
+    "knowledge.rebuildVisible": "实体投影只映射 player_visible + player_assessment + revealed_properties",
+    "store.submitAction": "contain/observe/use_power 必须带 target_id 或 free_text_target",
+    "PlayView": "目标选择器 + 可选「你的判断」；建议行动改写为可见目标名",
+    "GmPanel": "列出 true_entity_kind / linked_source_id / in_reality",
+    "StartScreen": "新游戏可选难度，默认 standard"
+  },
+  "do_not": [
+    "不要在玩家对象列表用颜色徽章区分源头和媒介",
+    "不要因为玩家 suspected_kind 选对了就自动关押成功",
+    "不要在标准/高难度失败文案里出现「投影」「源头」「鬼奴」等定性词",
+    "不要把隐藏源头「应门这件事本身」在揭示前放入可选目标列表"
+  ]
+}

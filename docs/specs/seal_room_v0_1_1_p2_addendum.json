@@ -1,0 +1,585 @@
+{
+  "document_type": "implementation_addendum",
+  "project_name": "隔绝室",
+  "project_name_en": "Seal Room",
+  "addendum_id": "seal_room_v0_1_1_p2_ghost_deadlock_containment_addendum",
+  "version": "0.1.1-P2-addendum",
+  "language": "zh-CN",
+  "generated_at": "2026-09-06T09:00:00+08:00",
+  "applies_to": {
+    "base_architecture": "supernatural_trpg_simulator_architecture_task.json",
+    "prototype_version": "0.1.0-prototype",
+    "target_iteration": "v0.1.1-P2",
+    "scope_positioning": "追加要求文档；不写入具体剧情、正式角色卡或不可修改的原著人物数值"
+  },
+  "purpose": "把 P2 死机对冲、拼图相容、独立厉鬼实体、关押后驾驭、强行驾驭、关押物交易等规则整理为可交给 Grok Build 执行的结构化任务。",
+  "non_goals": [
+    "不实现正式柴稻黄剧情线",
+    "不写死任何正式角色最终数值",
+    "不把 C/B/A/S 危害等级当作战斗力等级",
+    "不把驾驭厉鬼数量线性相加为角色强度",
+    "不让玩家界面默认显示源头/媒介/投影/鬼奴等真实类型",
+    "不让 AI GM 改写规则引擎已经结算的结果"
+  ],
+  "core_principles": [
+    {
+      "id": "independent_ghost_entities",
+      "text": "每只厉鬼都必须作为独立实体存在，拥有自身灵异上限、当前灵异强度、杀人规律、袭击状态、复苏行为和机制标签。驭鬼者不是获得技能，而是在身体里承载仍然会自行活动的厉鬼。"
+    },
+    {
+      "id": "source_hidden_from_player",
+      "text": "源头厉鬼、媒介、投影、鬼奴、衍生灵异现象等真实对象类型属于 GM hidden 层；高难度下由玩家自行判断，低难度可提供模糊提示。"
+    },
+    {
+      "id": "containment_before_driving",
+      "text": "普通驾驭路线必须先成功关押厉鬼。被关押厉鬼进入特殊物品栏后，才出现是否尝试驾驭的选项。"
+    },
+    {
+      "id": "forced_driving_is_exception",
+      "text": "未关押、未压制或源头仍在袭击时强行驾驭属于特殊高危选项，成功率显著降低，并更容易进入锚点、冲突、污染或崩溃状态。"
+    },
+    {
+      "id": "deadlock_is_dynamic",
+      "text": "死机不是杀死厉鬼，而是让厉鬼的某条行动路径、杀人规律或复苏路径被另一股灵异卡住。死机结构必须每轮动态判定，不能作为永久安全标签。"
+    },
+    {
+      "id": "strength_has_max_and_current",
+      "text": "被驾驭厉鬼必须同时拥有实际上限 max_strength 与当前强度 current_strength。刚驾驭时 current_strength 通常取 max_strength 的三分之一到二分之一，并随复苏、使用能力、外部刺激和规律触发上升。"
+    },
+    {
+      "id": "controlled_strength_is_not_current_strength",
+      "text": "current_strength 上升代表鬼更活跃，不代表玩家完全可控。玩家真正能主动调用的是 controlled_strength；鬼自行反噬、复苏或袭击宿主时使用 uncontrolled_strength 或 attack_strength。"
+    },
+    {
+      "id": "containment_strength_check",
+      "text": "正确选择源头且关押条件成立后，才进入灵异强度判定。己方关押强度大于源头当前灵异强度，则关押成功；否则只能进入失败、限制或暂时压制。"
+    }
+  ],
+  "data_model_additions": {
+    "ghost_entity": {
+      "description": "独立厉鬼实体。可代表源头厉鬼、被驾驭厉鬼、被关押厉鬼、鬼奴、投影、媒介背后的灵异实体或残缺拼图。",
+      "required_fields": [
+        "ghost_id",
+        "display_name",
+        "true_entity_kind",
+        "visibility",
+        "strength_profile",
+        "killing_rules",
+        "attack_state",
+        "revival_profile",
+        "mechanism_tags",
+        "containment_profile",
+        "driving_profile"
+      ],
+      "schema": {
+        "ghost_id": "string",
+        "display_name": "string",
+        "visible_aliases": [
+          "string"
+        ],
+        "true_entity_kind": "source_entity | possessed_ghost | contained_ghost_source | ghost_slave | projection | medium | phenomenon | fragment | unknown",
+        "visibility": {
+          "known_to_player": "boolean",
+          "displayed_to_player_as": "string",
+          "player_assessment": {
+            "suspected_kind": "source_entity | medium | projection | ghost_slave | phenomenon | fragment | unknown",
+            "confidence": "number_0_100",
+            "notes": [
+              "string"
+            ]
+          },
+          "revealed_properties": [
+            "string"
+          ],
+          "hidden_properties": [
+            "string"
+          ]
+        },
+        "source_relationship": {
+          "is_true_source": "boolean",
+          "linked_source_id": "string|null",
+          "parent_puzzle_id": "string|null",
+          "can_end_event_if_contained": "boolean"
+        },
+        "strength_profile": {
+          "max_strength": "number_0_10000",
+          "current_strength": "number_0_10000",
+          "controlled_strength": "number_0_10000",
+          "uncontrolled_strength": "number_0_10000",
+          "attack_strength": "number_0_10000",
+          "current_ratio_policy": "one_third | one_half | custom",
+          "growth_with_revival": "linear | stepped | custom",
+          "strength_tier": "number",
+          "notes": "string"
+        },
+        "killing_rules": [
+          {
+            "rule_id": "string",
+            "visible_clue": "string",
+            "hidden_rule_text": "string",
+            "trigger_conditions": [
+              "string"
+            ],
+            "is_triggered": "boolean",
+            "triggered_by_actor_id": "string|null",
+            "target_ids": [
+              "string"
+            ],
+            "stage": "inactive | warning | marked | attacking | completed",
+            "counterplay_tags": [
+              "string"
+            ],
+            "wrong_counterplay_results": [
+              "string"
+            ]
+          }
+        ],
+        "attack_state": {
+          "is_attacking": "boolean",
+          "current_attack_target_id": "string|null",
+          "attack_intent_source": "player_command | defensive_reaction | revival_instinct | killing_rule_triggered | external_control | none",
+          "attack_stage": "none | preparing | partial | full | completed",
+          "can_be_interrupted": "boolean",
+          "is_same_target_collision_candidate": "boolean"
+        },
+        "revival_profile": {
+          "ghost_activity": "number_0_100",
+          "revival_behavior": "string",
+          "contributes_to_character_revival": "boolean",
+          "revival_pressure": "number",
+          "deadlock_status": "none | local_deadlock | rule_deadlock | medium_deadlock | revival_deadlock | structural_deadlock | global_deadlock",
+          "deadlock_scope": [
+            "ghost_id_or_rule_id"
+          ],
+          "deadlock_break_conditions": [
+            "string"
+          ]
+        },
+        "mechanism_tags": [
+          "ghost_domain",
+          "medium_attack",
+          "killing_rule",
+          "curse",
+          "substitution",
+          "suppression",
+          "sealing",
+          "transfer",
+          "restart",
+          "time",
+          "identity_rewrite",
+          "outside_reality",
+          "attack_distribution",
+          "stacking",
+          "deadlock",
+          "heteromorphic",
+          "consciousness_pollution"
+        ],
+        "containment_profile": {
+          "can_be_contained": "boolean",
+          "requires_reality_presence": "boolean",
+          "required_window_tags": [
+            "string"
+          ],
+          "required_container_tags": [
+            "gold | custom"
+          ],
+          "false_containment_results": [
+            "string"
+          ],
+          "containment_success_state": "contained | suppressed_contained | partial_contained"
+        },
+        "driving_profile": {
+          "is_driveable_after_containment": "boolean",
+          "compatibility_tags": [
+            "string"
+          ],
+          "conflict_tags": [
+            "string"
+          ],
+          "assimilation_risk_base": "number_0_100",
+          "forced_driving_allowed": "boolean",
+          "forced_driving_penalty": "number",
+          "possible_driving_results": [
+            "single_ghost_instability",
+            "dual_ghost_deadlock",
+            "partial_deadlock",
+            "stable_deadlock",
+            "multi_puzzle_conflict",
+            "dead_ghost_state",
+            "anchor_state",
+            "heteromorphic_state",
+            "collapse"
+          ]
+        }
+      }
+    },
+    "character_balance_state": {
+      "description": "角色体内多只厉鬼、残缺拼图、死机结构和锚点关系的总状态。",
+      "schema": {
+        "state": "no_balance | single_ghost_instability | dual_ghost_deadlock | partial_deadlock | stable_deadlock | multi_puzzle_conflict | dead_ghost_state | anchor_state | heteromorphic_state | collapse",
+        "stability": "number_0_100",
+        "overall_revival_pressure": "number",
+        "possessed_ghost_ids": [
+          "ghost_id"
+        ],
+        "dominant_ghost_id": "ghost_id|null",
+        "deadlocked_ghost_ids": [
+          "ghost_id"
+        ],
+        "suppressed_ghost_ids": [
+          "ghost_id"
+        ],
+        "conflicting_ghost_ids": [
+          "ghost_id"
+        ],
+        "anchor_links": [
+          {
+            "source_ghost_id": "ghost_id",
+            "anchor_target_id": "character_id",
+            "anchor_type": "reality_interface | medium_binding | identity_overlap | curse_contract",
+            "stability": "number_0_100",
+            "known_to_player": "boolean"
+          }
+        ],
+        "deadlocked_rules": [
+          "rule_id"
+        ],
+        "failure_modes": [
+          "string"
+        ],
+        "last_state_transition_reason": "string"
+      }
+    },
+    "ghost_relation": {
+      "description": "两只厉鬼或拼图之间的相容、冲突、死机和叠加关系。",
+      "schema": {
+        "relation_id": "string",
+        "ghost_a_id": "ghost_id",
+        "ghost_b_id": "ghost_id",
+        "compatibility_score": "number_0_100",
+        "assimilation_risk": "number_0_100",
+        "conflict_score": "number_0_100",
+        "conflict_type": "mutual_suppression | mutual_stimulation | directional_suppression | rule_collision | medium_contamination | identity_overlap | anchor_competition | none",
+        "deadlock_potential": "number_0_100",
+        "stacking_potential": "number_0_100",
+        "relation_model": "single_vs_target | coalition_1_plus_2_approx_3 | parity_1_approx_2_approx_3 | stacking_1_times_2_approx_3 | dead_ghost_suppression",
+        "known_to_player": "boolean",
+        "revealed_clues": [
+          "string"
+        ],
+        "hidden_notes": "string"
+      }
+    },
+    "containment_attempt": {
+      "description": "一次关押尝试的完整记录。",
+      "schema": {
+        "attempt_id": "string",
+        "actor_ids": [
+          "character_id"
+        ],
+        "chosen_visible_target_id": "entity_or_object_id",
+        "player_assumption": "source_entity | medium | projection | ghost_slave | phenomenon | fragment | unknown",
+        "hidden_true_target_kind": "source_entity | medium | projection | ghost_slave | phenomenon | fragment | unknown",
+        "is_true_source_selected": "boolean",
+        "precondition_checks": {
+          "source_exists_in_reality": "boolean",
+          "operation_window_available": "boolean",
+          "container_effective": "boolean",
+          "will_not_cause_greater_hazard": "boolean",
+          "mechanism_not_blocking_normal_containment": "boolean"
+        },
+        "side_strength": {
+          "player_effective_containment_strength": "number",
+          "teammate_effective_strength_sum": "number",
+          "item_or_environment_modifier": "number",
+          "mechanism_penalty": "number",
+          "hazard_penalty": "number",
+          "final_side_strength": "number"
+        },
+        "source_current_strength": "number",
+        "result": "contained | limited | failed | false_containment | medium_removed | projection_dispersed | ghost_slave_destroyed | phenomenon_suppressed | source_transferred | event_escalated",
+        "visible_result_text": "string",
+        "hidden_result_text": "string",
+        "created_contained_ghost_item_id": "string|null",
+        "state_changes": "object"
+      }
+    },
+    "contained_ghost_item": {
+      "description": "关押成功后的特殊物品栏条目。可保存、交易、上交、研究、作为压制物或作为驾驭目标。",
+      "schema": {
+        "item_id": "string",
+        "name": "string",
+        "item_type": "contained_ghost",
+        "source_ghost_id": "ghost_id",
+        "container": {
+          "container_id": "string",
+          "container_type": "gold | custom",
+          "containment_integrity": "number_0_100",
+          "leakage_risk": "number_0_100",
+          "damage_risk": "number_0_100"
+        },
+        "is_tradeable": "boolean",
+        "is_driveable": "boolean",
+        "can_be_used_as_suppression_item": "boolean",
+        "known_properties": [
+          "string"
+        ],
+        "hidden_properties": [
+          "string"
+        ],
+        "trade_risk": [
+          "string"
+        ],
+        "gm_notes": "string"
+      }
+    },
+    "driving_attempt": {
+      "description": "一次驾驭尝试的记录。标准入口来自 contained_ghost，强行入口来自未关押/未压制源头。",
+      "schema": {
+        "attempt_id": "string",
+        "actor_id": "character_id",
+        "entry_type": "standard_after_containment | forced_without_containment | special_story_condition",
+        "target_ghost_id": "ghost_id",
+        "source_contained_item_id": "item_id|null",
+        "declared_method": "string",
+        "support_items": [
+          "item_id"
+        ],
+        "player_assumption": "string",
+        "internal_opposition_model": "single_vs_target | coalition_1_plus_2_approx_3 | parity_1_approx_2_approx_3 | stacking_1_times_2_approx_3 | dead_ghost_suppression",
+        "tier_difference": "number",
+        "forced_penalties_applied": [
+          "string"
+        ],
+        "checks": {
+          "body_bearing_check": "success | partial | failure",
+          "balance_check": "success | partial | failure",
+          "consciousness_check": "success | partial | failure",
+          "deadlock_check": "success | partial | failure | not_applicable"
+        },
+        "true_result_state": "single_ghost_instability | dual_ghost_deadlock | partial_deadlock | stable_deadlock | multi_puzzle_conflict | dead_ghost_state | anchor_state | heteromorphic_state | collapse",
+        "visible_result_text": "string",
+        "hidden_result_text": "string",
+        "cost": {
+          "revival_delta": "number",
+          "body_delta": "number",
+          "anchor_delta": "number",
+          "ghost_activity_deltas": "object"
+        },
+        "new_clues": [
+          "string"
+        ],
+        "new_hidden_flags": [
+          "string"
+        ]
+      }
+    }
+  },
+  "engine_requirements": {
+    "new_or_refactored_modules": [
+      {
+        "path": "src/lib/engine/ghost.ts",
+        "responsibility": "维护每只厉鬼独立条目、强度、杀人规律、袭击状态、复苏行为和玩家可见/隐藏信息。"
+      },
+      {
+        "path": "src/lib/engine/ghost-strength.ts",
+        "responsibility": "计算 max_strength、current_strength、controlled_strength、uncontrolled_strength、attack_strength；处理复苏度与当前强度增长关系。"
+      },
+      {
+        "path": "src/lib/engine/ghost-relations.ts",
+        "responsibility": "计算多鬼之间的相容、反向侵蚀、冲突、死机潜力与叠加潜力。"
+      },
+      {
+        "path": "src/lib/engine/balance.ts",
+        "responsibility": "维护角色 balance_state，处理 single、dual、partial_deadlock、stable_deadlock、anchor、collapse 等状态转移。"
+      },
+      {
+        "path": "src/lib/engine/revival.ts",
+        "responsibility": "每回合或使用灵异后更新单鬼 ghost_activity/current_strength，并根据死机鬼压制规则决定角色复苏度是否增加。"
+      },
+      {
+        "path": "src/lib/engine/containment.ts",
+        "responsibility": "重构关押判定：目标选择、源头检查、关押条件、己方强度与源头当前强度比较、生成 contained_ghost。"
+      },
+      {
+        "path": "src/lib/engine/driving.ts",
+        "responsibility": "重构驾驭判定：标准关押后驾驭与强行驾驭两入口，调用状态机而不是线性加数值。"
+      },
+      {
+        "path": "src/lib/engine/special-inventory.ts",
+        "responsibility": "维护 contained_ghost 特殊物品栏，支持保存、交易、上交、研究、作为压制物和作为驾驭目标。"
+      }
+    ]
+  },
+  "resolution_rules": {
+    "per_turn_ghost_update": [
+      "每回合、每次使用灵异、每次触发杀人规律、每次受到外部灵异刺激后，逐只更新 ghost_activity。",
+      "根据 ghost_activity、角色复苏度、使用记录和外部刺激，重新计算每只鬼 current_strength。",
+      "current_strength 变化不等于角色总强度线性变化，只代表该鬼当前苏醒和活跃程度。",
+      "controlled_strength = current_strength × controllability，并受经验、意识锚点、机制理解和平衡状态修正。",
+      "uncontrolled_strength 和 attack_strength 用于鬼自行复苏、反噬、袭击宿主或完整杀人规律发动时。"
+    ],
+    "dead_ghost_revival_check": [
+      "若体内不存在死机鬼，按正常复苏判定结算。",
+      "若体内存在死机鬼，先确定死机类型：local、rule、medium、revival、structural、global。",
+      "仅比较死机作用范围内的相关厉鬼；global_deadlock 才比较全部其余鬼。",
+      "若 dead_ghost.current_strength > sum(related_other_ghost.current_strength)，本次角色复苏度不增加。",
+      "即使复苏度不增加，各鬼 current_strength、ghost_activity、balance_state 仍继续变化。",
+      "若上述不成立，按正常复苏判定增加复苏度，并可能使 balance_state 退化。"
+    ],
+    "driving_prerequisite": [
+      "普通驾驭必须以成功关押 contained_ghost 为前提。",
+      "当 contained_ghost.is_driveable 为 true 时，玩家界面出现是否驾驭选项。",
+      "选择驾驭后进入状态机判定，不允许简单把该鬼强度加到角色强度上。",
+      "未关押或无压制条件下强行驾驭是特殊高危入口，必须应用惩罚。"
+    ],
+    "driving_strength_condition": [
+      "驾驭新鬼的基础条件是：体内已有灵异结构与新鬼当前袭击强度之间的位阶差不超过一阶。",
+      "若体内只有一只鬼，使用单鬼对抗模型。",
+      "若体内存在多只鬼，根据结构判断 internal_opposition_model：1+2≈3 合力对抗、1≈2≈3 等势对冲、1×2≈3 特殊叠加、死机鬼压制。",
+      "合力对抗可在本次承载/压制中形成临时合力，但不作为长期强度线性相加。",
+      "特殊叠加必须由明确机制标签支持，不得默认触发。",
+      "若位阶差超过一阶且无特殊压制物/环境/叠加，普通驾驭不可成立，结果倾向为污染、锚点、冲突或崩溃。"
+    ],
+    "same_target_attack_model": [
+      "驾驭的本质是让体内鬼和新鬼同时袭击宿主，使两只或多只厉鬼在同一目标上互相干扰。",
+      "当外部新鬼袭击宿主，宿主调用体内鬼抵挡时，被驾驭厉鬼应判定为也正在袭击宿主。",
+      "若两只鬼都无法完整完成杀人规律，可能形成暂时平衡、局部死机或稳定对冲。",
+      "若其中一只鬼强度或机制完全压过另一只，平衡不成立。"
+    ],
+    "containment_resolution": [
+      "玩家选择可见目标；系统隐藏层判断该目标是否为真实源头。",
+      "目标不是源头时，关押不能 resolved，只能进入 false_containment、medium_removed、projection_dispersed、ghost_slave_destroyed、phenomenon_suppressed、source_transferred 或 event_escalated。",
+      "目标是源头时，继续检查现实存在、操作窗口、黄金或隔绝物有效、更大危害风险、普通关押是否被特殊机制阻止。",
+      "全部条件成立后进入强度判定。",
+      "己方关押强度 > 源头当前灵异强度，则关押成功。",
+      "己方关押强度 ≤ 源头当前灵异强度，则不能直接关押，只能限制或失败。",
+      "剧情队友只有参与同一源头压制时，其有效强度才计入己方关押强度；若负责封锁、隔绝媒介或疏散，则不加到强度上，而是降低惩罚或创造窗口。"
+    ],
+    "contained_ghost_inventory": [
+      "关押成功后生成 contained_ghost_item 并放入特殊物品栏。",
+      "contained_ghost 可以保存、交易、上交、研究、作为压制物或作为驾驭目标。",
+      "被关押厉鬼不是安全物品，必须维护容器完整度、泄漏风险、交易风险和隐藏规律。",
+      "交易 contained_ghost 可能引发买家背调、总部关注、民间组织追查、黑吃黑或事件外泄。"
+    ]
+  },
+  "difficulty_and_visibility": {
+    "easy": {
+      "entity_kind_hinting": "soft_hint",
+      "false_source_warning": "before_action_possible",
+      "failure_explanation": "partial_clear",
+      "example_player_text": "这个目标未必是源头，直接关押可能无法结束事件。"
+    },
+    "standard": {
+      "entity_kind_hinting": "clue_based",
+      "false_source_warning": "after_consequence_only",
+      "failure_explanation": "partial_indirect",
+      "example_player_text": "黄金袋收紧，人影塌了下去。楼道安静了三秒，随后隔壁门外又传来敲门声。"
+    },
+    "hard": {
+      "entity_kind_hinting": "none",
+      "false_source_warning": "disabled",
+      "failure_explanation": "none",
+      "example_player_text": "你关上黄金袋。三秒后，另一扇门响了。"
+    }
+  },
+  "ui_requirements": {
+    "event_target_selection": [
+      "玩家界面显示可见目标，不显示真实 entity_kind。",
+      "玩家执行观察、袭击、关押、动用灵异时必须选择具体可见目标或自由输入目标。",
+      "可选填写 player_assumption，但该判断不改变 hidden 真实类型。"
+    ],
+    "special_inventory_panel": [
+      "新增特殊物品栏/关押物栏。",
+      "显示 contained_ghost 的已知名称、容器完整度、已知风险、是否可交易、是否可驾驭。",
+      "玩家默认不可见 hidden_properties。",
+      "当 is_driveable 为 true 时出现是否驾驭按钮。"
+    ],
+    "gm_panel": [
+      "显示 true_entity_kind、linked_source_id、false_containment 原因。",
+      "显示每只鬼 max/current/controlled/uncontrolled/attack strength。",
+      "显示 killing_rules 真实状态与 attack_state。",
+      "显示 balance_state、ghost_relation、deadlock_check 结果。",
+      "显示强行驾驭惩罚与真实状态机结果。"
+    ]
+  },
+  "test_scenarios": [
+    {
+      "id": "T1_independent_ghost_tracking",
+      "title": "每只厉鬼独立判定",
+      "given": "同一事件中存在源头、投影和鬼奴。",
+      "expect": "三者分别拥有独立 ghost_entity 或 entity 记录；各自杀人规律、袭击状态和关押结果不同。"
+    },
+    {
+      "id": "T2_false_source_not_resolved",
+      "title": "关错对象不结束事件",
+      "given": "玩家成功关押投影，但源头未被关押。",
+      "expect": "事件不得 resolved；根据配置进入 projection_dispersed、source_transferred 或 temporarily_suppressed。"
+    },
+    {
+      "id": "T3_containment_strength_success",
+      "title": "正确源头 + 己方强度大于源头当前强度",
+      "given": "玩家选择真实源头，关押窗口成立，己方强度 1600，源头当前强度 1200。",
+      "expect": "关押成功，生成 contained_ghost_item。"
+    },
+    {
+      "id": "T4_containment_strength_limit",
+      "title": "正确源头但强度不足只能限制",
+      "given": "玩家选择真实源头，关押窗口成立，己方强度 900，源头当前强度 1400。",
+      "expect": "不能 contained，只能 limited、temporarily_suppressed 或 failed。"
+    },
+    {
+      "id": "T5_standard_driving_requires_contained_ghost",
+      "title": "普通驾驭必须先关押",
+      "given": "目标鬼已成为 contained_ghost_item 且 is_driveable=true。",
+      "expect": "玩家可选择是否驾驭；选择后进入承载、平衡、意识与死机状态机判定。"
+    },
+    {
+      "id": "T6_forced_driving_penalty",
+      "title": "未关押强行驾驭惩罚",
+      "given": "玩家对正在袭击的未关押源头选择强行驾驭。",
+      "expect": "应用成功率惩罚和更高代价，更容易进入 anchor_state、multi_puzzle_conflict 或 collapse。"
+    },
+    {
+      "id": "T7_dead_ghost_suppresses_revival",
+      "title": "死机鬼强度大于相关其余鬼强度和时复苏度不变",
+      "given": "死机鬼 current_strength=1800，相关其余鬼强度和=1600。",
+      "expect": "本轮角色复苏度不增加，但各鬼 current_strength 仍可变化。"
+    },
+    {
+      "id": "T8_deadlock_breaks_when_sum_exceeds",
+      "title": "其余鬼强度和超过死机鬼后恢复复苏判定",
+      "given": "死机鬼 current_strength=1800，相关其余鬼强度和=1850。",
+      "expect": "按正常复苏判定结算，balance_state 可能退化。"
+    },
+    {
+      "id": "T9_current_strength_not_controlled_strength",
+      "title": "当前强度不等于玩家可控强度",
+      "given": "鬼 max=3000，current=1500，controllability=0.4。",
+      "expect": "controlled_strength 约为 600，uncontrolled_strength 保留更高反噬/复苏能力。"
+    },
+    {
+      "id": "T10_same_target_attack_deadlock",
+      "title": "两只鬼袭击同一目标形成对冲",
+      "given": "外部鬼袭击宿主，宿主调用体内鬼防御；二者强度位阶相近且机制互卡。",
+      "expect": "可进入 dual_ghost_deadlock 或 partial_deadlock，而不是直接线性增强。"
+    }
+  ],
+  "acceptance_criteria": [
+    "每只厉鬼均有独立 ghost_entity 记录，而不是只作为角色技能存在。",
+    "每只被驾驭厉鬼都有 max_strength、current_strength、controlled_strength、uncontrolled_strength 和 attack_strength。",
+    "杀人规律触发状态与是否正在袭击由每只鬼独立维护。",
+    "玩家界面默认不显示真实 entity_kind，高难度下不提示源头/媒介/投影/鬼奴身份。",
+    "普通驾驭路线必须基于 contained_ghost_item。",
+    "强行驾驭存在但受到显著惩罚。",
+    "正确选择源头且关押条件成立后才进入强度判定。",
+    "己方关押强度大于源头当前强度才生成 contained_ghost_item。",
+    "强度不足时只能限制或失败，不能直接关押。",
+    "剧情队友参与同一源头压制时可计入关押强度，其他分工只能提供窗口或降低惩罚。",
+    "死机鬼压制复苏采用 current_strength 动态比较，而不是静态标签。",
+    "即使复苏度不变，每只鬼的 current_strength 与状态机仍会继续变化。",
+    "驾驭新鬼不会把强度线性相加，而是通过状态机进入对冲、局部死机、冲突、锚点或崩溃。",
+    "contained_ghost 可进入特殊物品栏，并支持保存、交易、上交、研究、作为压制物和作为驾驭目标。",
+    "AI GM 只能叙述规则引擎输出的可见层结果，不得泄露 hidden true_entity_kind 或 hidden_result。"
+  ]
+}

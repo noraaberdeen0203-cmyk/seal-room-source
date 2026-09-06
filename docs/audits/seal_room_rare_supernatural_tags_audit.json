@@ -1,0 +1,153 @@
+{
+  "document_type": "seal_room_rare_supernatural_tags_audit",
+  "project_name": "隔绝室",
+  "project_version": "0.1.2-P3-B2.2-rare-tags",
+  "audit_generated_at": "2026-09-06T19:35:00+08:00",
+  "audit_mode": "read_only",
+  "overall_verdict": {
+    "status": "pass",
+    "summary": "七类稀有词条按 max 门槛准入，current 决定鬼域表现。范围重启复用 cooperativeOpposition，硬门 effective>=6800；无关机制不得相加。临时增幅跨门后支付即时 revival_cost。必死高3阶免即死；异类纯必死忽略、高2阶失能、必死+意识走 ConsciousnessAttackGate。单Power四tag exception_review；summary 不可跨 Power 混用。96 测全过。",
+    "score": 0.91
+  },
+  "source_of_truth": {
+    "documents_found": ["attachments/seal_room_rare_supernatural_tags_spec.json"],
+    "latest_rules_used": true
+  },
+  "repository_inspection": {
+    "new_modules": [
+      "src/lib/engine/rare-tags.ts",
+      "src/lib/engine/area-restart.ts",
+      "src/lib/engine/lethal.ts",
+      "src/lib/engine/consciousness-attack.ts",
+      "src/lib/engine/rare-tags.test.ts"
+    ],
+    "tests_failed": [],
+    "totals": "96 passed / 0 failed",
+    "typecheck": "clean"
+  },
+  "corrections_review": {
+    "max_gates": {
+      "status": "done",
+      "expected_behavior": "1500/2200/3000 最低 max。",
+      "actual_behavior": "RARE_TAG_MIN_MAX + rareTagEligible。",
+      "evidence": [{"file": "src/lib/engine/rare-tags.ts", "symbol": "RARE_TAG_MIN_MAX", "detail": "lethal 1500 domain/consciousness 2200 restart/idealistic 3000"}],
+      "test_evidence": ["RT01", "RT02", "RT03", "RT04", "RT05"],
+      "deviation": false,
+      "notes": ""
+    },
+    "domain_current_binding": {
+      "status": "done",
+      "expected_behavior": "鬼域有效强度跟 current。",
+      "actual_behavior": "domainEffectiveStrength = current * factor。",
+      "evidence": [{"file": "src/lib/engine/rare-tags.ts", "symbol": "domainEffectiveStrength", "detail": "ignores max"}],
+      "test_evidence": ["RT06"],
+      "deviation": false,
+      "notes": ""
+    },
+    "area_restart_gate": {
+      "status": "done",
+      "expected_behavior": "重启+可运行鬼域+effective>=6800；mismatch 失败。",
+      "actual_behavior": "evaluateAreaRestartGate + cooperativeOpposition。",
+      "evidence": [{"file": "src/lib/engine/area-restart.ts", "symbol": "AREA_RESTART_THRESHOLD", "detail": "6800 strict"}],
+      "test_evidence": ["RT07", "RT08", "RT10"],
+      "deviation": false,
+      "notes": ""
+    },
+    "temp_amp_revival": {
+      "status": "done",
+      "expected_behavior": "合法增幅可跨 6800，事后即时 revival。",
+      "actual_behavior": "used_amp 时返回 revival_cost。",
+      "evidence": [{"file": "src/lib/engine/area-restart.ts", "symbol": "computeAreaRestartEffective", "detail": "amp only if applies_to_composite"}],
+      "test_evidence": ["RT09"],
+      "deviation": false,
+      "notes": "未引入 revival_stress。"
+    },
+    "lethal_tiers": {
+      "status": "done",
+      "expected_behavior": "复用 tierOf；+3 免即死。",
+      "actual_behavior": "evaluateLethalVsNormal/Heteromorph 使用 strength.ts。",
+      "evidence": [{"file": "src/lib/engine/lethal.ts", "symbol": "evaluateLethalVsNormal", "detail": "defender_tier >= attack+3"}],
+      "test_evidence": ["RT11", "RT12", "RT13", "RT14"],
+      "deviation": false,
+      "notes": ""
+    },
+    "consciousness_protection": {
+      "status": "done",
+      "expected_behavior": "tag 不能自动保护；读忆失败。",
+      "actual_behavior": "结构化 function/effect 审查。",
+      "evidence": [{"file": "src/lib/engine/heteromorph-gate.ts", "symbol": "isProtectiveConsciousnessFunction", "detail": "tagOnly rejected"}],
+      "test_evidence": ["RT15", "DH06"],
+      "deviation": false,
+      "notes": ""
+    },
+    "single_restart": {
+      "status": "done",
+      "expected_behavior": "单体无需鬼域。",
+      "actual_behavior": "evaluateSingleRestart。",
+      "evidence": [{"file": "src/lib/engine/area-restart.ts", "symbol": "evaluateSingleRestart", "detail": "area redirects to area gate"}],
+      "test_evidence": ["RT16"],
+      "deviation": false,
+      "notes": ""
+    },
+    "cap_and_no_mix": {
+      "status": "done",
+      "expected_behavior": "4 tag exception_review；跨 Power 不混用。",
+      "actual_behavior": "reviewPowerRareTags + canMixRareMechanisms。",
+      "evidence": [{"file": "src/lib/engine/rare-tags.ts", "symbol": "PLAYER_POWER_RARE_CAP", "detail": "3"}],
+      "test_evidence": ["RT17", "RT18"],
+      "deviation": false,
+      "notes": ""
+    }
+  },
+  "behavioral_tests": [
+    {"id": "RT01", "status": "pass"},
+    {"id": "RT02", "status": "pass"},
+    {"id": "RT03", "status": "pass"},
+    {"id": "RT04", "status": "pass"},
+    {"id": "RT05", "status": "pass"},
+    {"id": "RT06", "status": "pass"},
+    {"id": "RT07", "status": "pass"},
+    {"id": "RT08", "status": "pass"},
+    {"id": "RT09", "status": "pass"},
+    {"id": "RT10", "status": "pass"},
+    {"id": "RT11", "status": "pass"},
+    {"id": "RT12", "status": "pass"},
+    {"id": "RT13", "status": "pass"},
+    {"id": "RT14", "status": "pass"},
+    {"id": "RT15", "status": "pass"},
+    {"id": "RT16", "status": "pass"},
+    {"id": "RT17", "status": "pass"},
+    {"id": "RT18", "status": "pass"}
+  ],
+  "regression_tests": {
+    "current_strength_driving": "pass",
+    "scene_wait_no_natural_revival": "pass",
+    "hidden_isolation": "pass",
+    "p3b2_dh": "pass"
+  },
+  "deviations": [],
+  "implementation_ambiguities": [
+    "压制/诅咒/唯心的完整 runtime lock 与 Source Contact 仅有门槛与数据结构，未接完整关押流程改写。",
+    "范围重启有效强度用 cooperativeOpposition(domainCurrent, restartCurrent)，未另建公式。",
+    "临时增幅 revival_cost 由调用方传入，默认测试值 28。"
+  ],
+  "technical_debt": [
+    "PlayView 未展示稀有词条与范围重启。",
+    "唯心 Source Contact 未写入 containment.ts。"
+  ],
+  "architecture_drift": {
+    "detected": false,
+    "items": ["未恢复 max 驾驭硬门", "未加小时复苏", "死机/异类顺序未改"]
+  },
+  "freeze_status": {
+    "p2_base": "frozen",
+    "p3_ab": "frozen",
+    "p3_b2": "frozen",
+    "p3_b22_rare_tags": "applied"
+  },
+  "next_required_work": [
+    {"priority": "P3", "title": "唯心 Source Contact 接入关押管线", "reason": "本轮只立硬门", "blocking": false},
+    {"priority": "P3", "title": "压制锁与诅咒媒介 runtime", "reason": "结构已可挂", "blocking": false}
+  ],
+  "final_assessment": "P3-B2.2 稀有词条门槛、范围重启、必死分流与异类接口已按规范落地并通过 RT01-RT18 及回归。建议冻结本层门槛数字，下一步只接线 containment/UI，不另建第二套位阶。"
+}
