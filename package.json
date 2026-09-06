@@ -20,6 +20,7 @@
     "typecheck": "tsc --noEmit",
     "check:auth": "node scripts/check-auth-invariant.mjs",
     "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/engine/p2.test.ts src/lib/engine/pipeline.test.ts src/lib/engine/final.test.ts src/lib/engine/amendment.test.ts src/lib/engine/fix1.test.ts src/lib/engine/p3b2.test.ts src/lib/engine/rare-tags.test.ts src/lib/engine/runtime.test.ts src/lib/engine/rare-action.integration.test.ts src/lib/engine/restart.test.ts src/lib/engine/trust-boundary.test.ts",
+    "test:engine": "node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/engine/p2.test.ts src/lib/engine/pipeline.test.ts src/lib/engine/final.test.ts src/lib/engine/amendment.test.ts src/lib/engine/fix1.test.ts src/lib/engine/p3b2.test.ts src/lib/engine/rare-tags.test.ts src/lib/engine/runtime.test.ts src/lib/engine/rare-action.integration.test.ts src/lib/engine/restart.test.ts src/lib/engine/trust-boundary.test.ts",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

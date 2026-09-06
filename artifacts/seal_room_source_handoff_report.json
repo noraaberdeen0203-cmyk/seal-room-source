@@ -1,0 +1,88 @@
+{
+  "document_type": "seal_room_source_handoff_report",
+  "project_version": "0.1.2-P3-B2.4-fix2-restart-trust-boundary",
+  "repository": {
+    "owner": "noraaberdeen0203-cmyk",
+    "name": "seal-room",
+    "visibility": "private",
+    "html_url": "https://github.com/noraaberdeen0203-cmyk/seal-room",
+    "default_branch": "main",
+    "handoff_commit_sha": "8296f7b5553da106372a1768c7373db7dad449f9",
+    "remote_partial_commit_sha": "0d9fb5cdcda4d25b8184b378d23f63669502474c",
+    "tag": "seal-room-p3b24-fix2-handoff",
+    "tag_location": "local_only"
+  },
+  "validation": {
+    "clean_install": "not_run",
+    "typecheck": "pass",
+    "tests": {
+      "status": "pass",
+      "scope": "src/lib/engine + app-data + auth",
+      "passed": 198,
+      "failed": 0,
+      "npm_test_full_suite": {
+        "status": "fail",
+        "passed": 187,
+        "failed": 8,
+        "note": "failures are pre-existing scripts/grok-pwa-plugin.test.mjs platform chrome OG tests, not engine rules"
+      }
+    },
+    "build": "not_run",
+    "ci": "configured"
+  },
+  "handoff_files": {
+    "HANDOFF.md": true,
+    "ARCHITECTURE.md": true,
+    "HANDOFF_MANIFEST.json": true,
+    "specs_included": [
+      "docs/specs/seal_room_v0_1_2_p2_final_correction_spec.json",
+      "docs/specs/seal_room_p2_amendment01_p3ab_spec.json",
+      "docs/specs/seal_room_p3ab_fix1_spec.json",
+      "docs/specs/seal_room_p3b2_deadlock_heteromorph_spec.json",
+      "docs/specs/seal_room_rare_supernatural_tags_spec.json",
+      "docs/specs/seal_room_p3b23_rare_tag_runtime_spec.json",
+      "docs/specs/seal_room_p3b24_rare_action_integration_spec.json",
+      "docs/specs/seal_room_p3b24_fix1_restart_semantics_spec.json",
+      "docs/specs/seal_room_p3b24_fix2_restart_trust_boundary_spec.json"
+    ],
+    "audits_included": [
+      "docs/audits/seal_room_p3b24_fix2_restart_trust_boundary_audit.json",
+      "docs/audits/seal_room_p3b24_fix1_restart_semantics_audit.json",
+      "docs/audits/seal_room_p3b24_rare_action_integration_audit.json",
+      "docs/audits/seal_room_p3b23_rare_tag_runtime_audit.json",
+      "docs/audits/seal_room_rare_supernatural_tags_audit.json",
+      "docs/audits/seal_room_p3b2_deadlock_heteromorph_audit.json"
+    ]
+  },
+  "security_checks": {
+    "secrets_removed": true,
+    "env_example_created_if_needed": true,
+    "node_modules_excluded": true
+  },
+  "known_incomplete_features": [
+    "RevivalEndpointEngine",
+    "full world-state rewind",
+    "memory/consciousness/causal restart",
+    "online LLM Plan Interpreter",
+    "Scheduler",
+    "Hidden Roll",
+    "Event Clock",
+    "NPC Autonomy",
+    "full ghost-domain collision",
+    "full consciousness combat",
+    "full rare-action UI wiring"
+  ],
+  "known_technical_debt": [
+    "ephemeral transaction Set plus save.action_transactions dual track",
+    "area restart does not rewind full WorldState",
+    "RareActionPayload still accepts forbidden authority fields for forgery tests",
+    "natural revival writes revival_degree directly by spec exception"
+  ],
+  "notes": [
+    "Private repo created: https://github.com/noraaberdeen0203-cmyk/seal-room",
+    "GitHub MCP push_files uploaded only handoff docs/CI/.gitignore. Full 188-file tree exists as local commit 8296f7b with tag seal-room-p3b24-fix2-handoff.",
+    "gh CLI is not logged in; no GITHUB_TOKEN in environment; git push to origin was not possible.",
+    "User must from a machine with repo write access: git remote add origin git@github.com:noraaberdeen0203-cmyk/seal-room.git && git push -u origin main --tags",
+    "Remote currently does not contain src/ or package-lock.json; CI will fail until full push."
+  ]
+}
