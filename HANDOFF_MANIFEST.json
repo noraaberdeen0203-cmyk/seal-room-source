@@ -3,12 +3,15 @@
   "version": "0.1.2-P3-B2.4-fix2-restart-trust-boundary",
   "handoff_type": "full_source",
   "default_branch": "main",
+  "local_head_sha": "01ad633e316959977390ac6b3158b5cb574db760",
+  "baseline_tag": "seal-room-p3b24-fix2-handoff",
+  "handoff_tag_v2": "seal-room-p3b24-fix2-handoff-v2",
   "entry_points": [
     "src/routes/index.tsx",
     "src/lib/engine/resolution.ts",
     "src/lib/store.ts"
   ],
-  "test_commands": ["npm test"],
+  "test_commands": ["npm run test:engine", "npm test"],
   "build_commands": ["npm run build"],
   "typecheck_commands": ["npm run typecheck"],
   "latest_audit": "docs/audits/seal_room_p3b24_fix2_restart_trust_boundary_audit.json",
@@ -42,6 +45,9 @@
     "area restart does not rewind full WorldState",
     "RareActionPayload still accepts forbidden authority fields for forgery tests",
     "natural revival writes revival_degree directly by spec exception"
+  ],
+  "known_test_failures": [
+    "scripts/grok-pwa-plugin.test.mjs: 8 platform chrome OG tests"
   ],
   "required_node_version": "22",
   "package_manager": "npm",
